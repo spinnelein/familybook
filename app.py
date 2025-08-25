@@ -10,7 +10,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Import models after initializing extensions
-from models import User, Post, Comment, Tag
+from models import User, Post, Comment, Tag, ImportedPhoto
 
 # Scheduler import after app & db setup
 from scheduler import start_scheduler
