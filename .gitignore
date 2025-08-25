@@ -1,0 +1,16 @@
+__pycache__/
+instance/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+site.db
+*.sqlite3
+*.db
+*.log
+static/uploads/
+static/imported/
+credentials.json
+token.pickle
