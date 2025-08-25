@@ -1,21 +1,18 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from config import Config
+from extensions import db, login_manager
 
 app = Flask(__name__)
-app.config.from_object('config.Config')
+app.config.from_object(Config)
 
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
+db.init_app(app)
+login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from models import User, Post, Comment, Tag  # Import models
+# Import models after initializing extensions
+from models import User, Post, Comment, Tag
 
-# Register blueprints/routes (to be implemented)
-# from routes import main as main_blueprint
-# app.register_blueprint(main_blueprint)
-
-# Start the scheduler
+# Scheduler import after app & db setup
 from scheduler import start_scheduler
 start_scheduler()
 
