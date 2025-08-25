@@ -1,4 +1,4 @@
-from app import db
+from extensions import db
 from flask_login import UserMixin
 from datetime import datetime
 
@@ -42,4 +42,4 @@ class ImportedPhoto(db.Model):
     filename = db.Column(db.String)
     status = db.Column(db.String, default='pending')  # 'pending', 'approved', 'rejected'
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-    published_at = db.Column(db.DateTime)  
+    published_at = db.Column(db.DateTime)
