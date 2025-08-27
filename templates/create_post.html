@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Post</title>
+      <script src="{{ url_for('static', filename='tinymce/tinymce.min.js') }}"></script>
+    <style>
+        label { display: block; margin-top: 1em; }
+    </style>
+</head>
+<body>
+    <h1>Create a Post</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+          {% for category, message in messages %}
+            <li><strong>{{ category }}:</strong> {{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+    <label>Title <input type="text" name="title"></label>
+    <textarea id="editor" name="content"></textarea>
+        <label>Image: <input type="file" name="image" accept="image/*"></label>
+        <label>Video: <input type="file" name="video" accept="video/*"></label>
+		<button type="submit">Create Post</button>
+  </form>
+    <p><a href="{{ url_for('posts_feed') }}">Back to Feed</a></p>
+
+    <script>
+
+tinymce.init({
+  selector: '#editor',
+  height: 400,
+  plugins: 'image media link code',
+  toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright alignjustify | ' +
+           'bullist numlist outdent indent | image media link | code',
+  images_upload_url: "{{ url_for('upload_media') }}",
+  automatic_uploads: true,
+  images_upload_credentials: true,
+  media_live_embeds: true,
+ license_key: 'gpl',
+  file_picker_types: 'image media',
+  images_reuse_filename: true,
+  convert_urls: false,
+  relative_urls: false,
+  remove_script_host: false,
+  images_upload_handler: function (blobInfo, success, failure) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload-media');
+    xhr.onload = function() {
+      if (xhr.status != 200) {
+        failure('HTTP Error: ' + xhr.status);
+        return;
+      }
+      var json;
+      try {
+        json = JSON.parse(xhr.responseText);
+      } catch (e) {
+        failure('Could not parse JSON: ' + xhr.responseText);
+        return;
+      }
+      if (!json || typeof json.location != 'string') {
+        failure('Invalid JSON: ' + xhr.responseText);
+        return;
+      }
+      success(json.location);
+    };
+    var formData = new FormData();
+    formData.append('file', blobInfo.blob(), blobInfo.filename());
+    xhr.send(formData);
+  }
+});
+</script>
+
+</body>
+</html>
