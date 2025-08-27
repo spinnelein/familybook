@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Management</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .user-card { 
+            border: 1px solid #ddd; 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 5px; 
+            background-color: #f9f9f9;
+        }
+        .magic-link { 
+            background-color: #e7f3ff; 
+            padding: 10px; 
+            border-radius: 3px; 
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .form-group { margin: 10px 0; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input { padding: 8px; width: 300px; }
+        .btn { 
+            padding: 8px 16px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 3px; 
+            cursor: pointer; 
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .alert { 
+            padding: 15px; 
+            margin: 20px 0; 
+            border-radius: 4px; 
+        }
+        .alert-success { background-color: #d4edda; color: #155724; }
+        .alert-error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>User Management</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2>Add New User</h2>
+    <form method="POST" action="{{ url_for('add_user') }}">
+        <input type="hidden" name="admin_key" value="admin123">
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add User</button>
+    </form>
+
+    <h2>Existing Users</h2>
+    {% if users %}
+        {% for user in users %}
+        <div class="user-card">
+            <h3>{{ user.name }} ({{ user.email }})</h3>
+            <div class="magic-link">
+                <strong>Magic Link:</strong><br>
+                <a href="{{ url_for('posts_feed', token=user.magic_token, _external=True) }}" target="_blank">
+                    {{ url_for('posts_feed', token=user.magic_token, _external=True) }}
+                </a>
+            </div>
+            <form method="POST" action="{{ url_for('remove_user', user_id=user.id) }}" style="display: inline;">
+                <input type="hidden" name="admin_key" value="admin123">
+                <button type="submit" class="btn btn-danger" 
+                        onclick="return confirm('Are you sure you want to remove this user?')">
+                    Remove User
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No users found. Add some users to get started!</p>
+    {% endif %}
+
+    <hr>
+    <p><a href="{{ url_for('posts_feed', token='') }}">Posts Feed</a> (requires valid token)</p>
+</body>
+</html>

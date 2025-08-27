@@ -2,28 +2,46 @@
 <html>
 <head>
     <title>Posts Feed</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .post { 
+            border: 1px solid #ccc; 
+            margin: 1em 0; 
+            padding: 1em; 
+            border-radius: 5px;
+        }
+        .post h2 { margin-top: 0; }
+        .post-meta { color: #666; font-size: 0.9em; margin-top: 10px; }
+        .nav { margin-bottom: 20px; }
+        .nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
+        .nav a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
+    <div class="nav">
+        <a href="{{ url_for('create_post') }}?token={{ token }}">Create Post</a>
+        {% if token %}
+            <span style="color: #666;">| Authenticated with token</span>
+        {% endif %}
+    </div>
+    
     <h1>Posts Feed</h1>
-    {% for post in posts %}
-        <div style="border:1px solid #ccc; margin:1em 0; padding:1em;">
-            <h2>{{ post['title'] }}</h2>
-            <div>{{ post['content']|safe }}</div>
-            {% if post['image_filename'] %}
+    
+    {% if posts %}
+        {% for post in posts %}
+        <div class="post">
+            <h2>{{ post.title }}</h2>
+            <div>{{ post.body|safe }}</div>
+            {% if post.image_filename %}
                 <div>
-                    <img src="{{ url_for('uploaded_file', filename=post['image_filename']) }}" alt="Post Image" style="max-width:300px;">
+                    <img src="{{ url_for('uploaded_file', filename=post.image_filename) }}" alt="Post Image" style="max-width:300px;">
                 </div>
             {% endif %}
-            {% if post['video_filename'] %}
-                <div>
-                    <video controls style="max-width:400px;">
-                        <source src="{{ url_for('uploaded_file', filename=post['video_filename']) }}">
-                        Your browser does not support the video tag.
-                    </video>
-                </div>
-            {% endif %}
-            <div><em>Posted {{ post['created'] }}</em></div>
+            <div class="post-meta">Posted {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
         </div>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p>No posts yet. <a href="{{ url_for('create_post') }}?token={{ token }}">Create the first post!</a></p>
+    {% endif %}
 </body>
 </html>

@@ -26,7 +26,7 @@
         <label>Video: <input type="file" name="video" accept="video/*"></label>
 		<button type="submit">Create Post</button>
   </form>
-    <p><a href="{{ url_for('posts_feed') }}">Back to Feed</a></p>
+    <p><a href="{{ url_for('posts_feed') }}?token={{ token }}">Back to Feed</a></p>
 
     <script>
 
