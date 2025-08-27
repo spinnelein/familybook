@@ -46,25 +46,26 @@ def create_post():
         title = request.form['title']
         content = request.form['content']
 
-        image_file = request.files.get('image')
-        video_file = request.files.get('video')
-
         image_filename = None
         video_filename = None
 
-        # Handle image
+        # Handle image upload
+        image_file = request.files.get('image')
         if image_file and image_file.filename:
             ext = image_file.filename.rsplit('.', 1)[-1].lower()
             if ext in ALLOWED_IMAGE_EXTENSIONS:
                 image_filename = f"img_{uuid.uuid4().hex}.{ext}"
-                image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+                image_file.save(image_path)
 
-        # Handle video
+        # Handle video upload
+        video_file = request.files.get('video')
         if video_file and video_file.filename:
             ext = video_file.filename.rsplit('.', 1)[-1].lower()
             if ext in ALLOWED_VIDEO_EXTENSIONS:
                 video_filename = f"vid_{uuid.uuid4().hex}.{ext}"
-                video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], video_filename))
+                video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_filename)
+                video_file.save(video_path)
 
         db = get_db()
         db.execute(
@@ -75,7 +76,6 @@ def create_post():
         flash("Post created!", "success")
         return redirect(url_for('create_post'))    
     return render_template('create_post.html')
-
 
 
 
