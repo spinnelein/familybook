@@ -45,16 +45,39 @@ def create_post():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
+
+        image_file = request.files.get('image')
+        video_file = request.files.get('video')
+
+        image_filename = None
+        video_filename = None
+
+        # Handle image
+        if image_file and image_file.filename:
+            ext = image_file.filename.rsplit('.', 1)[-1].lower()
+            if ext in ALLOWED_IMAGE_EXTENSIONS:
+                image_filename = f"img_{uuid.uuid4().hex}.{ext}"
+                image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+
+        # Handle video
+        if video_file and video_file.filename:
+            ext = video_file.filename.rsplit('.', 1)[-1].lower()
+            if ext in ALLOWED_VIDEO_EXTENSIONS:
+                video_filename = f"vid_{uuid.uuid4().hex}.{ext}"
+                video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], video_filename))
+
         db = get_db()
         db.execute(
-            "INSERT INTO posts (title, content) VALUES (?, ?)",
-            (title, content)
+            "INSERT INTO posts (title, content, image_filename, video_filename) VALUES (?, ?, ?, ?)",
+            (title, content, image_filename, video_filename)
         )
         db.commit()
         flash("Post created!", "success")
-        return redirect(url_for('create_post'))
-
+        return redirect(url_for('create_post'))    
     return render_template('create_post.html')
+
+
+
 
 @app.route('/posts')
 def posts_feed():
