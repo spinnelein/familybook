@@ -45,10 +45,31 @@ def create_post():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
+        
+        # Handle file uploads
+        image_filename = None
+        video_filename = None
+        
+        # Process image upload
+        if 'image' in request.files:
+            image_file = request.files['image']
+            if image_file.filename and allowed_file(image_file.filename, ALLOWED_IMAGE_EXTENSIONS):
+                image_filename = f"img_{uuid.uuid4().hex}.{image_file.filename.rsplit('.', 1)[1].lower()}"
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+                image_file.save(image_path)
+        
+        # Process video upload
+        if 'video' in request.files:
+            video_file = request.files['video']
+            if video_file.filename and allowed_file(video_file.filename, ALLOWED_VIDEO_EXTENSIONS):
+                video_filename = f"vid_{uuid.uuid4().hex}.{video_file.filename.rsplit('.', 1)[1].lower()}"
+                video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_filename)
+                video_file.save(video_path)
+        
         db = get_db()
         db.execute(
-            "INSERT INTO posts (title, content) VALUES (?, ?)",
-            (title, content)
+            "INSERT INTO posts (title, content, image_filename, video_filename) VALUES (?, ?, ?, ?)",
+            (title, content, image_filename, video_filename)
         )
         db.commit()
         flash("Post created!", "success")
