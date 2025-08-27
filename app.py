@@ -77,14 +77,6 @@ def create_post():
         return redirect(url_for('create_post'))    
     return render_template('create_post.html')
 
-
-
-@app.route('/posts')
-def posts_feed():
-    db = get_db()
-    posts = db.execute("SELECT * FROM posts ORDER BY created DESC").fetchall()
-    return render_template('posts_feed.html', posts=posts)
-
 @app.route('/upload-media', methods=['POST'])
 def upload_media():
     file = request.files.get('file')
@@ -101,7 +93,68 @@ def upload_media():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
+import uuid
+import sqlite3
+import os
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['DATABASE'] = 'familybook.db'
+
+def get_db():
+    conn = sqlite3.connect(app.config['DATABASE'])
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# User management page
+@app.route('/admin/users', methods=['GET', 'POST'])
+def manage_users():
+    db = get_db()
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        magic_token = uuid.uuid4().hex
+        try:
+            db.execute('INSERT INTO users (name, email, magic_token) VALUES (?, ?, ?)', (name, email, magic_token))
+            db.commit()
+            flash('User added!', 'success')
+        except sqlite3.IntegrityError:
+            flash('Email already exists!', 'danger')
+        return redirect(url_for('manage_users'))
+
+    users = db.execute('SELECT * FROM users').fetchall()
+    return render_template('manage_users.html', users=users)
+
+# Remove user
+@app.route('/admin/users/remove/<int:user_id>', methods=['POST'])
+def remove_user(user_id):
+    db = get_db()
+    db.execute('DELETE FROM users WHERE id = ?', (user_id,))
+    db.commit()
+    flash('User removed.', 'info')
+    return redirect(url_for('manage_users'))
+
+# Posts feed with magic link
+@app.route('/posts/<magic_token>')
+def posts(magic_token):
+    db = get_db()
+    user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+    if not user:
+        abort(403)
+    posts = db.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
+    return render_template('posts.html', posts=posts, user=user)
+
+# Remove the old /posts endpoint if it exists, or make it forbidden
+@app.route('/posts')
+def posts_no_token():
+    abort(403)
+
+
 if __name__ == "__main__":
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     init_db()
     app.run(debug=True)
+    
+    
+    

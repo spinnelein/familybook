@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Management</title>
+</head>
+<body>
+    <h1>Manage Users</h1>
+    <form method="POST" action="{{ url_for('manage_users') }}">
+        <input name="name" placeholder="Name" required>
+        <input name="email" placeholder="Email" required type="email">
+        <button type="submit">Add User</button>
+    </form>
+    <h2>Existing Users</h2>
+    <table>
+        <tr><th>Name</th><th>Email</th><th>Magic Link</th><th>Remove</th></tr>
+        {% for user in users %}
+        <tr>
+            <td>{{ user['name'] }}</td>
+            <td>{{ user['email'] }}</td>
+            <td>
+                <a href="{{ url_for('posts', magic_token=user['magic_token'], _external=True) }}" target="_blank">
+                    Magic Link
+                </a>
+            </td>
+            <td>
+                <form method="POST" action="{{ url_for('remove_user', user_id=user['id']) }}" style="display:inline;">
+                    <button type="submit" onclick="return confirm('Remove user?');">Remove</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
