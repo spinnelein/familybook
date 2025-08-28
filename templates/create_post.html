@@ -2,78 +2,679 @@
 <html>
 <head>
     <title>Create Post</title>
-      <script src="{{ url_for('static', filename='tinymce/tinymce.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='tinymce/tinymce.min.js') }}"></script>
     <style>
-        label { display: block; margin-top: 1em; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin: 20px 0 8px 0;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .image-upload-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            background-color: #f9fafb;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .image-upload-section:hover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        
+        .image-upload-section.dragover {
+            border-color: #3b82f6;
+            background-color: #dbeafe;
+            transform: scale(1.02);
+        }
+        
+        .upload-button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .upload-button:hover {
+            background-color: #2563eb;
+        }
+        
+        .insert-images-btn {
+            background-color: #059669;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: background-color 0.2s;
+        }
+        
+        .insert-images-btn:hover {
+            background-color: #047857;
+        }
+        
+        .insert-images-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .preview-item {
+            position: relative;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        
+        .preview-item:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .preview-item img, .preview-item video {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+        }
+        
+        .preview-item .media-type {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .preview-item .filename {
+            padding: 8px;
+            font-size: 12px;
+            color: #6b7280;
+            background: #f9fafb;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .preview-item .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        input[type="file"] {
+            padding: 8px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background-color: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+        
+        .loading {
+            display: none;
+            color: #6b7280;
+            font-style: italic;
+        }
+        
+        #editor {
+            margin: 20px 0;
+        }
+        
+        .upload-info {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .resize-settings {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .resize-settings label {
+            margin: 5px 15px 5px 0;
+            font-weight: normal;
+            display: inline-block;
+        }
+
+        .resize-settings input[type="number"] {
+            width: 80px;
+            padding: 4px 8px;
+            margin-left: 5px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+
+        .resize-settings input[type="range"] {
+            width: 100px;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>Create a Post</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, message in messages %}
-            <li><strong>{{ category }}:</strong> {{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+    <div class="container">
+        <h1>Create a New Post</h1>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li><strong>{{ category }}:</strong> {{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
 
-    <form method="POST" enctype="multipart/form-data">
-    <label>Title <input type="text" name="title"></label>
-    <textarea id="editor" name="content"></textarea>
-        <label>Image: <input type="file" name="image" accept="image/*"></label>
-        <label>Video: <input type="file" name="video" accept="video/*"></label>
-		<br>
-		<button type="submit">Create Post</button>
-  </form>
-    <p><a href="{{ url_for('posts_feed') }}">Back to Feed</a></p>
+        <form method="POST" enctype="multipart/form-data">
+            <label for="title">Post Title</label>
+            <input type="text" name="title" id="title" required>
+
+            <label for="editor">Content</label>
+            
+            <!-- Image Upload Section -->
+            <div class="image-upload-section" id="drop-zone">
+                <div style="margin-bottom: 15px;">
+                    <h3 style="margin: 0 0 10px 0; color: #374151;">📸🎬 Add Images & Videos to Your Post</h3>
+                    <p style="color: #6b7280; margin: 0;">Drag and drop images and videos here, or click to select multiple files</p>
+                </div>
+                
+                <!-- Image Resize Settings -->
+                <div class="resize-settings">
+                    <strong>🎨 Image Resize Settings:</strong><br>
+                    <label>Max Width: <input type="number" id="maxWidth" value="1200" min="200" max="2000"> px</label>
+                    <label>Max Height: <input type="number" id="maxHeight" value="800" min="200" max="2000"> px</label>
+                    <label>Quality: <input type="range" id="quality" min="0.1" max="1" step="0.1" value="0.8"> <span id="qualityValue">80%</span></label>
+                    <br><small style="color: #6b7280;">Images will be automatically resized to optimize file size and loading speed</small>
+                </div>
+                
+                <input type="file" id="file-input" multiple accept="image/*,video/*">
+                <button type="button" class="upload-button" onclick="document.getElementById('file-input').click()">
+                    📁 Choose Images & Videos
+                </button>
+                
+                <div class="upload-info">
+                    Images: JPG, PNG, GIF, WebP • Videos: MP4, MOV, AVI, WebM • Max 100MB total
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <button type="button" class="insert-images-btn" id="insert-all-btn" onclick="insertAllMedia()" disabled>
+                        ✨ Insert All Media
+                    </button>
+                    <button type="button" class="insert-images-btn" onclick="clearAllMedia()">
+                        🗑️ Clear All
+                    </button>
+                    <span class="loading" id="loading">Processing and uploading files...</span>
+                </div>
+            </div>
+
+            <!-- Preview Container -->
+            <div class="preview-container" id="preview-container"></div>
+
+            <textarea id="editor" name="content"></textarea>
+
+            <div class="button-group">
+                <div>
+                    <label for="image">Additional Single Image</label>
+                    <input type="file" name="image" id="image" accept="image/*">
+                </div>
+                <div>
+                    <label for="video">Video Upload</label>
+                    <input type="file" name="video" id="video" accept="video/*">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn-primary">✨ Create Post</button>
+            </div>
+        </form>
+    </div>
 
     <script>
+        let uploadedMedia = [];
+        
+        // Update quality display
+        document.getElementById('quality').addEventListener('input', function() {
+            document.getElementById('qualityValue').textContent = Math.round(this.value * 100) + '%';
+        });
+        
+        // Image resizing function
+        function resizeImage(file, maxWidth = 1200, maxHeight = 800, quality = 0.8) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = function() {
+                    // Calculate new dimensions while maintaining aspect ratio
+                    let { width, height } = img;
+                    
+                    // Calculate scaling factor
+                    const scaleX = maxWidth / width;
+                    const scaleY = maxHeight / height;
+                    const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
+                    
+                    const newWidth = Math.floor(width * scale);
+                    const newHeight = Math.floor(height * scale);
+                    
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    
+                    // Enable image smoothing for better quality
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    
+                    // Draw and resize
+                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                    
+                    // Convert to blob with specified quality
+                    canvas.toBlob((blob) => {
+                        // Create a new File object with the original name
+                        const resizedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(resizedFile);
+                    }, 'image/jpeg', quality);
+                };
+                
+                img.onerror = function() {
+                    console.error('Error loading image for resize');
+                    resolve(file); // Return original file if resize fails
+                };
+                
+                img.src = URL.createObjectURL(file);
+            });
+        }
 
-tinymce.init({
-  selector: '#editor',
-  height: 400,
-  plugins: 'image media link code',
-  toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright alignjustify | ' +
-           'bullist numlist outdent indent | image media link | code',
-  images_upload_url: "{{ url_for('upload_media') }}",
-  automatic_uploads: true,
-  images_upload_credentials: true,
-  media_live_embeds: true,
- license_key: 'gpl',
-  file_picker_types: 'image media',
-  images_reuse_filename: true,
-  convert_urls: false,
-  relative_urls: false,
-  remove_script_host: false,
-  images_upload_handler: function (blobInfo, success, failure) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/upload-media');
-    xhr.onload = function() {
-      if (xhr.status != 200) {
-        failure('HTTP Error: ' + xhr.status);
-        return;
-      }
-      var json;
-      try {
-        json = JSON.parse(xhr.responseText);
-      } catch (e) {
-        failure('Could not parse JSON: ' + xhr.responseText);
-        return;
-      }
-      if (!json || typeof json.location != 'string') {
-        failure('Invalid JSON: ' + xhr.responseText);
-        return;
-      }
-      success(json.location);
-    };
-    var formData = new FormData();
-    formData.append('file', blobInfo.blob(), blobInfo.filename());
-    xhr.send(formData);
-  }
-});
-</script>
+        // Get file size in human readable format
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // TinyMCE Configuration
+        tinymce.init({
+            selector: '#editor',
+            height: 500,
+            plugins: 'image media link code lists textcolor colorpicker hr table paste',
+            toolbar: 'undo redo | styles | bold italic underline strikethrough | ' +
+                     'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
+                     'bullist numlist outdent indent | image media link table | hr | code',
+            images_upload_url: "{{ url_for('upload_media') }}",
+            automatic_uploads: true,
+            images_upload_credentials: true,
+            media_live_embeds: true,
+            license_key: 'gpl',
+            file_picker_types: 'image media',
+            images_reuse_filename: true,
+            convert_urls: false,
+            relative_urls: false,
+            remove_script_host: false,
+            paste_data_images: true,
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.6; } img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }',
+            images_upload_handler: function (blobInfo, success, failure) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', "{{ url_for('upload_media') }}");
+                xhr.onload = function() {
+                    if (xhr.status != 200) {
+                        failure('HTTP Error: ' + xhr.status);
+                        return;
+                    }
+                    var json;
+                    try {
+                        json = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        failure('Could not parse JSON: ' + xhr.responseText);
+                        return;
+                    }
+                    if (!json || typeof json.location != 'string') {
+                        failure('Invalid JSON: ' + xhr.responseText);
+                        return;
+                    }
+                    success(json.location);
+                };
+                var formData = new FormData();
+                formData.append('file', blobInfo.blob(), blobInfo.filename());
+                xhr.send(formData);
+            }
+        });
 
+        // File input change handler
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        // Drag and drop handlers
+        const dropZone = document.getElementById('drop-zone');
+
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // Handle file selection with resizing
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+
+            console.log('Selected files:', Array.from(files).map(f => f.name));
+            document.getElementById('loading').style.display = 'inline';
+
+            // Get resize settings
+            const maxWidth = parseInt(document.getElementById('maxWidth').value);
+            const maxHeight = parseInt(document.getElementById('maxHeight').value);
+            const quality = parseFloat(document.getElementById('quality').value);
+
+            const formData = new FormData();
+            let totalOriginalSize = 0;
+            let totalProcessedSize = 0;
+            
+            for (let file of files) {
+                totalOriginalSize += file.size;
+                
+                if (file.type.startsWith('image/') && !file.type.includes('gif')) {
+                    // Resize image (skip GIFs to preserve animation)
+                    console.log(`Resizing image: ${file.name} (${formatFileSize(file.size)})`);
+                    const resizedFile = await resizeImage(file, maxWidth, maxHeight, quality);
+                    totalProcessedSize += resizedFile.size;
+                    formData.append('media', resizedFile, file.name);
+                    console.log(`Resized to: ${formatFileSize(resizedFile.size)} (${Math.round((1 - resizedFile.size/file.size) * 100)}% reduction)`);
+                } else {
+                    // Keep videos and GIFs as-is
+                    totalProcessedSize += file.size;
+                    formData.append('media', file);
+                    console.log(`Added ${file.type.startsWith('video/') ? 'video' : 'file'}: ${file.name} (${formatFileSize(file.size)})`);
+                }
+            }
+
+            try {
+                console.log('Sending request to /upload-multiple-media');
+                console.log(`Total size reduction: ${formatFileSize(totalOriginalSize)} → ${formatFileSize(totalProcessedSize)} (${Math.round((1 - totalProcessedSize/totalOriginalSize) * 100)}% smaller)`);
+                
+                const response = await fetch('/upload-multiple-media', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+
+                // Get response text first to debug
+                const responseText = await response.text();
+                console.log('Raw response:', responseText);
+
+                // Try to parse as JSON
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    console.error('Response text:', responseText);
+                    throw new Error('Server returned invalid JSON. Check the server console for errors.');
+                }
+
+                if (result.success) {
+                    result.media.forEach(media => {
+                        uploadedMedia.push(media);
+                        addMediaPreview(media);
+                    });
+                    
+                    updateInsertButton();
+                    const savings = totalOriginalSize > totalProcessedSize ? 
+                        ` (${formatFileSize(totalOriginalSize - totalProcessedSize)} saved!)` : '';
+                    alert(`Successfully uploaded ${result.count} file(s)!${savings}`);
+                } else {
+                    alert('Upload failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Upload failed: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                // Clear the file input
+                document.getElementById('file-input').value = '';
+            }
+        }
+
+        // Add media preview
+        function addMediaPreview(media) {
+            const container = document.getElementById('preview-container');
+            
+            const previewItem = document.createElement('div');
+            previewItem.className = 'preview-item';
+            previewItem.dataset.filename = media.filename;
+            
+            let mediaElement;
+            if (media.type === 'image') {
+                mediaElement = `<img src="${media.url}" alt="${media.original_name}">`;
+            } else {
+                mediaElement = `<video src="${media.url}" muted></video>`;
+            }
+            
+            previewItem.innerHTML = `
+                ${mediaElement}
+                <div class="media-type">${media.type.toUpperCase()}</div>
+                <div class="filename">${media.original_name}</div>
+                <button class="remove-btn" onclick="removeMedia('${media.filename}')" type="button">×</button>
+            `;
+            
+            // Add click handler to insert individual media
+            previewItem.addEventListener('dblclick', function() {
+                insertSingleMedia(media);
+            });
+            
+            container.appendChild(previewItem);
+        }
+
+        // Remove media
+        function removeMedia(filename) {
+            uploadedMedia = uploadedMedia.filter(media => media.filename !== filename);
+            const previewItem = document.querySelector(`[data-filename="${filename}"]`);
+            if (previewItem) {
+                previewItem.remove();
+            }
+            updateInsertButton();
+        }
+
+        // Update insert button state
+        function updateInsertButton() {
+            const insertBtn = document.getElementById('insert-all-btn');
+            insertBtn.disabled = uploadedMedia.length === 0;
+            insertBtn.textContent = uploadedMedia.length > 0 
+                ? `✨ Insert All Media (${uploadedMedia.length})` 
+                : '✨ Insert All Media';
+        }
+
+        // Insert single media into editor
+        function insertSingleMedia(media) {
+            let mediaHtml;
+            if (media.type === 'image') {
+                mediaHtml = `<img src="${media.url}" alt="${media.original_name}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+            } else {
+                mediaHtml = `<video controls style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;">
+                    <source src="${media.url}" type="video/${media.extension}">
+                    Your browser does not support the video tag.
+                </video>`;
+            }
+            tinymce.get('editor').insertContent(mediaHtml);
+        }
+
+        // Insert all media into editor
+        function insertAllMedia() {
+            if (uploadedMedia.length === 0) return;
+            
+            let htmlContent = '';
+            uploadedMedia.forEach(media => {
+                if (media.type === 'image') {
+                    htmlContent += `<img src="${media.url}" alt="${media.original_name}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" /><p></p>`;
+                } else {
+                    htmlContent += `<video controls style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;">
+                        <source src="${media.url}" type="video/${media.extension}">
+                        Your browser does not support the video tag.
+                    </video><p></p>`;
+                }
+            });
+            
+            tinymce.get('editor').insertContent(htmlContent);
+            
+            // Clear uploaded media after inserting
+            clearAllMedia();
+        }
+
+        // Clear all media
+        function clearAllMedia() {
+            uploadedMedia = [];
+            document.getElementById('preview-container').innerHTML = '';
+            updateInsertButton();
+        }
+
+        // Initialize
+        updateInsertButton();
+    </script>
 </body>
 </html>

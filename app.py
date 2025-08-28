@@ -1,15 +1,17 @@
 import os
 import sqlite3
 import uuid
-from flask import Flask, jsonify, request, redirect, url_for, render_template, send_from_directory, flash, g
+import requests
+from flask import Flask, jsonify, request, redirect, url_for, render_template, send_from_directory, flash, g, abort
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
 app.config['DATABASE'] = 'familybook.db'
 app.secret_key = 'your-secret-key'
 
-ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
 
 def get_db():
@@ -40,6 +42,7 @@ def init_db():
         )''')
         db.commit()
 
+@app.route('/')
 @app.route('/create-post', methods=['GET', 'POST'])
 def create_post():
     if request.method == 'POST':
@@ -79,33 +82,89 @@ def create_post():
 
 @app.route('/upload-media', methods=['POST'])
 def upload_media():
+    """Handle direct file uploads from TinyMCE"""
     file = request.files.get('file')
     if not file:
         return jsonify(error='No file'), 400
+    
     ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify(error='Invalid file type'), 400
+    
     filename = f"img_{uuid.uuid4().hex}.{ext}"
     path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(path)
     url = url_for('uploaded_file', filename=filename, _external=True)
     return jsonify(location=url)
-    
+
+@app.route('/upload-multiple-images', methods=['POST'])
+def upload_multiple_images():
+    """Handle multiple image uploads"""
+    try:
+        # Debug: Print what we received
+        print("Files received:", request.files)
+        print("Form data:", request.form)
+        
+        files = request.files.getlist('images')
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'error': 'No files provided'}), 400
+        
+        uploaded_images = []
+        
+        for file in files:
+            if file and file.filename and file.filename != '':
+                print(f"Processing file: {file.filename}")
+                
+                # Check file extension
+                if '.' not in file.filename:
+                    print(f"Skipping file with no extension: {file.filename}")
+                    continue
+                    
+                ext = file.filename.rsplit('.', 1)[-1].lower()
+                if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                    print(f"Skipping invalid extension: {ext}")
+                    continue
+                
+                try:
+                    # Generate unique filename
+                    unique_filename = f"img_{uuid.uuid4().hex}.{ext}"
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                    
+                    # Save the file
+                    file.save(file_path)
+                    print(f"Saved file: {file_path}")
+                    
+                    # Generate URL
+                    file_url = url_for('uploaded_file', filename=unique_filename, _external=True)
+                    
+                    uploaded_images.append({
+                        'filename': unique_filename,
+                        'original_name': file.filename,
+                        'url': file_url
+                    })
+                    
+                except Exception as file_error:
+                    print(f"Error saving file {file.filename}: {str(file_error)}")
+                    continue
+        
+        print(f"Successfully uploaded {len(uploaded_images)} images")
+        
+        return jsonify({
+            'success': True,
+            'images': uploaded_images,
+            'count': len(uploaded_images)
+        })
+        
+    except Exception as e:
+        print(f"Upload error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
-import uuid
-import sqlite3
-import os
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
-app.config['DATABASE'] = 'familybook.db'
-
-def get_db():
-    conn = sqlite3.connect(app.config['DATABASE'])
-    conn.row_factory = sqlite3.Row
-    return conn
 
 # User management page
 @app.route('/admin/users', methods=['GET', 'POST'])
@@ -150,11 +209,6 @@ def posts(magic_token):
 def posts_no_token():
     abort(403)
 
-
 if __name__ == "__main__":
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     init_db()
     app.run(debug=True)
-    
-    
-    
