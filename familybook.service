@@ -1,0 +1,27 @@
+[Unit]
+Description=Familybook Web Application
+After=network.target
+
+[Service]
+Type=simple
+User=familybook
+Group=www-data
+WorkingDirectory=/home/familybook/familybook
+Environment=PATH=/home/familybook/familybook/venv/bin
+EnvironmentFile=/home/familybook/familybook/.env
+ExecStart=/home/familybook/familybook/venv/bin/python app.py
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=familybook
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/familybook/uploads /home/familybook/familybook
+
+[Install]
+WantedBy=multi-user.target
