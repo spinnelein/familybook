@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slugranch Familybook</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0 0 30px 0;
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .description {
+            color: #64748b;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        
+        .instructions {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .instructions h3 {
+            color: #1e293b;
+            margin: 0 0 20px 0;
+            font-size: 1.4rem;
+        }
+        
+        .instructions p {
+            color: #475569;
+            margin: 15px 0;
+            text-align: left;
+        }
+        
+        .contact-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .contact-info h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+        }
+        
+        .contact-info p {
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px;
+            }
+            
+            .container {
+                padding: 40px 25px;
+            }
+            
+            .logo {
+                font-size: 3rem;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .description {
+                font-size: 1.1rem;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .container {
+            animation: fadeInUp 0.8s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🐌</div>
+        <h1>Slugranch Familybook</h1>
+        
+        <div class="description">
+            Welcome to our private family photo sharing platform! This is a secure space for our family to share memories, photos, and stay connected.
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 How to Access</h3>
+            <p><strong>Step 1:</strong> Contact Aaron or Ryan to get your personal access link</p>
+            <p><strong>Step 2:</strong> Use your unique magic link to view and interact with family posts</p>
+            <p><strong>Step 3:</strong> If you're an admin, you can create posts and manage content</p>
+        </div>
+        
+        <div class="contact-info">
+            <h3>👥 Get Your Access</h3>
+            <p>Contact <strong>Aaron</strong> or <strong>Ryan</strong> to receive your personalized magic link.</p>
+            <p>Each family member gets their own secure access link for privacy and personalization.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -13,4 +13,6 @@ site.db
 static/uploads/
 static/imported/
 credentials.json
+client_secret.json
 token.pickle
+photoslibrary_v1_discovery.json

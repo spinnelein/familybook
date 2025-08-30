@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Photo Stream - Slugranch Familybook</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #1e293b;
+            margin: 0 0 15px 0;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 30px;
+        }
+        
+        .sort-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .sort-btn {
+            background: #f3f4f6;
+            color: #374151;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .sort-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .sort-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .back-link {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .back-link:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .photo-item {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .photo-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .photo-item img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .photo-item img:hover {
+            transform: scale(1.05);
+        }
+        
+        .photo-info {
+            padding: 12px;
+        }
+        
+        .photo-caption {
+            font-weight: 500;
+            color: #1e293b;
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        
+        .no-photos {
+            text-align: center;
+            background: white;
+            border-radius: 16px;
+            padding: 60px 30px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .no-photos h2 {
+            color: #64748b;
+            font-size: 1.5rem;
+            margin: 0 0 15px 0;
+        }
+        
+        /* Image overlay for full-size viewing */
+        .image-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .image-overlay img {
+            max-width: 95%;
+            max-height: 95%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .image-overlay .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        
+        .image-overlay .close-btn:hover {
+            color: #ccc;
+        }
+        
+        /* Load more button */
+        .load-more {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .load-more-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.2s ease;
+        }
+        
+        .load-more-btn:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .photo-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+                padding: 0 15px;
+            }
+            
+            .header {
+                padding: 20px;
+                margin: 0 15px 20px;
+            }
+            
+            .controls {
+                padding: 15px;
+                margin: 0 15px 20px;
+            }
+            
+            .sort-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .photo-item {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .photo-item:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+        
+        .photo-item:nth-child(3n) {
+            animation-delay: 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📸 Photo Stream</h1>
+        <p>All photos from Slugranch Familybook</p>
+    </div>
+    
+    <div class="controls">
+        <div class="sort-controls">
+            <a href="{{ url_for('posts', magic_token=user.magic_token) }}" class="back-link">← Back to Posts</a>
+            <span style="color: #64748b;">Sort by:</span>
+            <a href="{{ url_for('photo_stream', magic_token=user.magic_token, sort_order='recent') }}" 
+               class="sort-btn {{ 'active' if sort_order == 'recent' else '' }}">📅 Most Recent</a>
+            <a href="{{ url_for('photo_stream', magic_token=user.magic_token, sort_order='oldest') }}" 
+               class="sort-btn {{ 'active' if sort_order == 'oldest' else '' }}">🕰️ Oldest First</a>
+        </div>
+    </div>
+    
+    {% if images %}
+        <div class="photo-grid">
+            {% for image in images %}
+                <div class="photo-item">
+                    <img src="{{ image['url'] }}" 
+                         alt="{{ image['post_title'] }}"
+                         onclick="showImageOverlay(this.src)">
+                    <div class="photo-info">
+                        <div class="photo-caption">
+                            {{ image['post_title'] }} • {{ image['upload_date'][:10] }}
+                            {% if image['author_name'] %}
+                                • by {{ image['author_name'] }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if has_more %}
+            <div class="load-more">
+                <a href="{{ url_for('photo_stream', magic_token=user.magic_token, sort_order=sort_order, offset=offset+50) }}" 
+                   class="load-more-btn">
+                    📸 Load More Photos
+                </a>
+                <p style="color: white; text-align: center; margin-top: 15px; font-size: 14px;">
+                    Showing {{ offset + images|length }} of {{ total_images }} photos
+                </p>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="no-photos">
+            <h2>📸 No photos yet!</h2>
+            <p>No photos have been posted yet. Check back later!</p>
+        </div>
+    {% endif %}
+    
+    <!-- Image overlay for full-size viewing -->
+    <div class="image-overlay" id="imageOverlay">
+        <span class="close-btn" onclick="closeImageOverlay()">&times;</span>
+        <img id="overlayImage" src="" alt="">
+    </div>
+    
+    <script>
+        function showImageOverlay(imgSrc) {
+            const overlay = document.getElementById('imageOverlay');
+            const overlayImg = document.getElementById('overlayImage');
+            
+            overlayImg.src = imgSrc;
+            overlay.style.display = 'block';
+            
+            // Add escape key handler
+            document.addEventListener('keydown', handleEscapeKey);
+        }
+        
+        function closeImageOverlay() {
+            const overlay = document.getElementById('imageOverlay');
+            overlay.style.display = 'none';
+            
+            // Remove escape key handler
+            document.removeEventListener('keydown', handleEscapeKey);
+        }
+        
+        function handleEscapeKey(event) {
+            if (event.key === 'Escape') {
+                closeImageOverlay();
+            }
+        }
+        
+        // Close overlay when clicking on background
+        document.getElementById('imageOverlay').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeImageOverlay();
+            }
+        });
+    </script>
+</body>
+</html>

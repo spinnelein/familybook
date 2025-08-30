@@ -3,10 +3,11 @@
 <head>
     <title>Create Post</title>
     <script src="{{ url_for('static', filename='tinymce/tinymce.min.js') }}"></script>
+    <!-- Note: Google Photo Picker API removed due to 2024 restrictions -->
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f8fafc;
@@ -209,14 +210,6 @@
             background-color: #2563eb;
         }
         
-        input[type="file"] {
-            padding: 8px;
-            border: 2px dashed #d1d5db;
-            border-radius: 8px;
-            background-color: #f9fafb;
-            width: 100%;
-            box-sizing: border-box;
-        }
         
         .flash-messages {
             margin-bottom: 20px;
@@ -245,6 +238,13 @@
         
         #editor {
             margin: 20px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* Ensure TinyMCE iframe takes full width */
+        .tox-tinymce {
+            width: 100% !important;
         }
         
         .upload-info {
@@ -280,6 +280,181 @@
             width: 100px;
             margin-left: 5px;
         }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .google-photos-btn {
+            background: linear-gradient(135deg, #ea4335 0%, #fbbc05 25%, #34a853 50%, #4285f4 100%);
+        }
+
+        .google-photos-btn:hover {
+            background: linear-gradient(135deg, #d33b2c 0%, #f9ab00 25%, #2d8a43 50%, #3367d6 100%);
+        }
+
+        /* Google Photos Picker Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close {
+            color: #94a3b8;
+            float: right;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close:hover {
+            color: #ef4444;
+        }
+
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .photo-item {
+            position: relative;
+            border: 3px solid transparent;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .photo-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .photo-item.selected {
+            border-color: #3b82f6;
+            transform: scale(0.95);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        .photo-checkbox {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .photo-item.selected .photo-checkbox {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .photo-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+            color: white;
+            padding: 15px 10px 8px;
+            font-size: 12px;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .selection-count {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -299,16 +474,24 @@
         </div>
 
         <form method="POST" enctype="multipart/form-data">
-            <label for="title">Post Title</label>
-            <input type="text" name="title" id="title" required>
+            <div style="display: flex; gap: 15px; align-items: end; margin-bottom: 20px;">
+                <div style="flex: 1;">
+                    <label for="title">Post Title</label>
+                    <input type="text" name="title" id="title" required>
+                </div>
+                <div>
+                    <button type="submit" class="btn-primary">✨ Create Post</button>
+                </div>
+            </div>
 
             <label for="editor">Content</label>
-            
-            <!-- Image Upload Section -->
+            <textarea id="editor" name="content"></textarea>
+
+            <!-- Image Upload Section - Moved to bottom -->
             <div class="image-upload-section" id="drop-zone">
                 <div style="margin-bottom: 15px;">
                     <h3 style="margin: 0 0 10px 0; color: #374151;">📸🎬 Add Images & Videos to Your Post</h3>
-                    <p style="color: #6b7280; margin: 0;">Drag and drop images and videos here, or click to select multiple files</p>
+                    <p style="color: #6b7280; margin: 0;">Upload from your device or select from Google Photos</p>
                 </div>
                 
                 <!-- Image Resize Settings -->
@@ -321,9 +504,14 @@
                 </div>
                 
                 <input type="file" id="file-input" multiple accept="image/*,video/*">
-                <button type="button" class="upload-button" onclick="document.getElementById('file-input').click()">
-                    📁 Choose Images & Videos
-                </button>
+                <div class="button-row">
+                    <button type="button" class="upload-button" onclick="document.getElementById('file-input').click()">
+                        📁 Choose from Device
+                    </button>
+                    <button type="button" class="upload-button google-photos-btn" onclick="openGooglePhotosPicker()">
+                        📷 Browse Google Photos
+                    </button>
+                </div>
                 
                 <div class="upload-info">
                     Images: JPG, PNG, GIF, WebP • Videos: MP4, MOV, AVI, WebM • Max 100MB total
@@ -343,23 +531,36 @@
             <!-- Preview Container -->
             <div class="preview-container" id="preview-container"></div>
 
-            <textarea id="editor" name="content"></textarea>
-
-            <div class="button-group">
-                <div>
-                    <label for="image">Additional Single Image</label>
-                    <input type="file" name="image" id="image" accept="image/*">
-                </div>
-                <div>
-                    <label for="video">Video Upload</label>
-                    <input type="file" name="video" id="video" accept="video/*">
-                </div>
-            </div>
-
-            <div class="button-group">
-                <button type="submit" class="btn-primary">✨ Create Post</button>
-            </div>
         </form>
+    </div>
+
+    <!-- Google Photos Picker Modal -->
+    <div id="googlePhotosModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📷 Select from Google Photos</h2>
+                <span class="close">&times;</span>
+            </div>
+            
+            <div class="loading-spinner" id="photosLoading">
+                <div class="spinner"></div>
+                <p>Loading your Google Photos...</p>
+            </div>
+            
+            <div class="photos-grid" id="photosGrid"></div>
+            
+            <div class="modal-footer">
+                <div class="selection-count">
+                    <span id="selectedCount">0</span> photos selected
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-primary" onclick="closeGooglePhotosModal()">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="importSelectedPhotos()" id="importBtn" disabled>
+                        ✨ Import Selected Photos
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -431,8 +632,10 @@
         // TinyMCE Configuration
         tinymce.init({
             selector: '#editor',
-            height: 500,
-            plugins: 'image media link code lists textcolor colorpicker hr table paste',
+            width: '100%',
+            plugins: 'autoresize image media link code lists textcolor colorpicker hr table paste',
+            autoresize_min_height: 400,
+            autoresize_max_height: 2000,
             toolbar: 'undo redo | styles | bold italic underline strikethrough | ' +
                      'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
                      'bullist numlist outdent indent | image media link table | hr | code',
@@ -447,7 +650,7 @@
             relative_urls: false,
             remove_script_host: false,
             paste_data_images: true,
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.6; } img { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.6; } img { max-width: 60%; height: auto; border-radius: 8px; margin: 10px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; } video { max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; }',
             images_upload_handler: function (blobInfo, success, failure) {
                 var xhr = new XMLHttpRequest();
                 xhr.open('POST', "{{ url_for('upload_media') }}");
@@ -634,7 +837,7 @@
         function insertSingleMedia(media) {
             let mediaHtml;
             if (media.type === 'image') {
-                mediaHtml = `<img src="${media.url}" alt="${media.original_name}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+                mediaHtml = `<img src="${media.url}" alt="${media.original_name}" style="max-width: 60%; height: auto; margin: 10px 0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer;" />`;
             } else {
                 mediaHtml = `<video controls style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;">
                     <source src="${media.url}" type="video/${media.extension}">
@@ -651,7 +854,7 @@
             let htmlContent = '';
             uploadedMedia.forEach(media => {
                 if (media.type === 'image') {
-                    htmlContent += `<img src="${media.url}" alt="${media.original_name}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" /><p></p>`;
+                    htmlContent += `<img src="${media.url}" alt="${media.original_name}" style="max-width: 60%; height: auto; margin: 10px 0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer;" /><p></p>`;
                 } else {
                     htmlContent += `<video controls style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;">
                         <source src="${media.url}" type="video/${media.extension}">
@@ -675,6 +878,406 @@
 
         // Initialize
         updateInsertButton();
+        
+        // Google Photos Picker API (2024) - Proper implementation
+        let currentPickerSession = null;
+        let pollingInterval = null;
+        let isDownloading = false;
+        let sessionCompleted = false;
+        
+        async function openGooglePhotosPicker() {
+            console.log('Opening Google Photos Picker...');
+            
+            // Clear any existing polling to prevent duplicates
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            
+            // Reset flags
+            isDownloading = false;
+            sessionCompleted = false;
+            
+            const modal = document.getElementById('googlePhotosModal');
+            const loading = document.getElementById('photosLoading');
+            const grid = document.getElementById('photosGrid');
+            
+            modal.style.display = 'block';
+            loading.style.display = 'block';
+            grid.innerHTML = '';
+            
+            try {
+                // Step 1: Create picker session
+                console.log('Creating picker session...');
+                const response = await fetch('/api/google-photos/create-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const sessionData = await response.json();
+                
+                if (!sessionData.success) {
+                    throw new Error(sessionData.error || 'Failed to create picker session');
+                }
+                
+                currentPickerSession = sessionData.sessionId;
+                const pickerUri = sessionData.pickerUri;
+                
+                console.log('Session created:', currentPickerSession);
+                console.log('Picker URI:', pickerUri);
+                
+                // Step 2: Automatically open Google Photos picker
+                window.open(pickerUri, '_blank');
+                
+                // Step 3: Show interface and start polling automatically
+                loading.style.display = 'none';
+                startPolling();
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
+                        <h3 style="color: #1e293b; margin-bottom: 20px;">📷 Google Photos Picker</h3>
+                        
+                        <div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border: 2px solid #22c55e; border-radius: 12px; padding: 25px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 15px 0; color: #166534;">✅ Google Photos Picker Opened!</h4>
+                            <p style="margin: 10px 0; color: #166534; line-height: 1.6;">
+                                Google Photos should have opened in a new tab. Select your photos there,
+                                then come back to this page and we'll automatically detect your selection 
+                                and import the photos.
+                            </p>
+                        </div>
+                        
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #374151;">📋 Instructions:</h4>
+                            <ol style="text-align: left; margin: 10px 0; padding-left: 20px; color: #4b5563; line-height: 1.6;">
+                                <li><strong>Switch to the Google Photos tab</strong> that just opened</li>
+                                <li><strong>Select photos/videos</strong> you want to add to your post</li>
+                                <li><strong>Confirm your selection</strong> in Google Photos</li>
+                                <li><strong>Return to this page</strong> - we'll automatically import your selection!</li>
+                            </ol>
+                        </div>
+                        
+                        <div style="display: flex; gap: 15px; justify-content: center; margin: 20px 0; flex-wrap: wrap;">
+                            <button onclick="cancelPickerSession()" class="btn btn-primary">
+                                ❌ Cancel & Close
+                            </button>
+                        </div>
+                        
+                        <div id="polling-status" style="margin-top: 20px;">
+                            <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px;">
+                                <p style="margin: 0; color: #92400e; font-weight: 500;">
+                                    ⏳ Waiting for your photo selection... 
+                                    <span style="font-weight: normal;">Please complete your selection in the Google Photos tab.</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error creating picker session:', error);
+                loading.style.display = 'none';
+                
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
+                        <h3 style="color: #dc2626;">❌ Error</h3>
+                        <p style="margin: 15px 0; color: #dc2626;">
+                            Failed to create Google Photos picker session: ${error.message}
+                        </p>
+                        <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: left;">
+                            <h4 style="margin: 0 0 10px 0; color: #dc2626;">Possible Solutions:</h4>
+                            <ul style="margin: 0; padding-left: 20px; color: #dc2626;">
+                                <li>Check your Google Photos API authentication</li>
+                                <li>Verify the Google Photos Library API is enabled</li>
+                                <li>Make sure you have proper OAuth permissions</li>
+                            </ul>
+                        </div>
+                        <button onclick="closeGooglePhotosModal()" class="btn btn-primary">
+                            OK
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function startPolling() {
+            console.log('Starting polling for session:', currentPickerSession);
+            
+            // Show polling status
+            const statusDiv = document.getElementById('polling-status');
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+            }
+            
+            // Start polling every 3 seconds
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/google-photos/poll-session/${currentPickerSession}`);
+                    const pollData = await response.json();
+                    
+                    if (pollData.success && pollData.completed && !sessionCompleted) {
+                        sessionCompleted = true; // Mark session as completed immediately
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                        
+                        if (pollData.cancelled) {
+                            console.log('User cancelled photo selection');
+                            showPickerResult('Cancelled', 'You cancelled the photo selection.', 'info');
+                        } else if (pollData.selectedItems && pollData.selectedItems.length > 0) {
+                            console.log('Photos selected:', pollData.selectedItems);
+                            await downloadSelectedPhotos(pollData.selectedItems);
+                        } else {
+                            console.log('No photos selected');
+                            showPickerResult('No Selection', 'No photos were selected.', 'info');
+                        }
+                    } else if (pollData.success) {
+                        console.log('Still waiting for selection, state:', pollData.state);
+                    } else {
+                        throw new Error(pollData.error || 'Polling failed');
+                    }
+                    
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    clearInterval(pollingInterval);
+                    showPickerResult('Error', `Polling failed: ${error.message}`, 'error');
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+        
+        async function downloadSelectedPhotos(selectedItems) {
+            try {
+                if (isDownloading) {
+                    console.log('Download already in progress, skipping...');
+                    return;
+                }
+                
+                isDownloading = true;
+                console.log('Downloading selected photos...');
+                
+                // Show download progress
+                const grid = document.getElementById('photosGrid');
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
+                        <h3 style="color: #1e293b;">⏳ Downloading Photos...</h3>
+                        <p>Processing ${selectedItems.length} selected photo(s) from Google Photos...</p>
+                        <div style="margin: 20px 0;">
+                            <div style="width: 100%; background: #e5e7eb; border-radius: 10px; height: 8px; overflow: hidden;">
+                                <div style="width: 0%; background: linear-gradient(90deg, #3b82f6, #1d4ed8); height: 100%; border-radius: 10px; animation: progress 3s ease-in-out infinite;" id="progress-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const response = await fetch('/api/google-photos/download-selected', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        selectedItems: selectedItems
+                    })
+                });
+                
+                const downloadData = await response.json();
+                
+                if (downloadData.success) {
+                    console.log('Successfully downloaded photos:', downloadData.media);
+                    
+                    // Add downloaded photos to the media preview
+                    downloadData.media.forEach(media => {
+                        uploadedMedia.push(media);
+                        addMediaPreview(media);
+                    });
+                    
+                    updateInsertButton();
+                    closeGooglePhotosModal();
+                    
+                    // Success - no popup needed, photos are already visible in preview
+                    
+                } else {
+                    throw new Error(downloadData.error || 'Download failed');
+                }
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                showPickerResult('Download Error', `Failed to download photos: ${error.message}`, 'error');
+            } finally {
+                isDownloading = false;
+            }
+        }
+        
+        function showPickerResult(title, message, type) {
+            const grid = document.getElementById('photosGrid');
+            const bgColor = type === 'error' ? '#fef2f2' : type === 'info' ? '#f0f9ff' : '#f0fdf4';
+            const borderColor = type === 'error' ? '#fca5a5' : type === 'info' ? '#93c5fd' : '#86efac';
+            const textColor = type === 'error' ? '#dc2626' : type === 'info' ? '#2563eb' : '#16a34a';
+            
+            grid.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
+                    <h3 style="color: ${textColor};">${title}</h3>
+                    <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <p style="margin: 0; color: ${textColor};">${message}</p>
+                    </div>
+                    <button onclick="closeGooglePhotosModal()" class="btn btn-primary">
+                        OK
+                    </button>
+                </div>
+            `;
+        }
+        
+        function cancelPickerSession() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            currentPickerSession = null;
+            closeGooglePhotosModal();
+        }
+        
+        function displayGooglePhotos(photos) {
+            const grid = document.getElementById('photosGrid');
+            
+            if (!photos || photos.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
+                        <h3>No Photos Found</h3>
+                        <p>No photos were found in your Google Photos library.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            photos.forEach(photo => {
+                const photoElement = document.createElement('div');
+                photoElement.className = 'photo-item';
+                photoElement.dataset.photoId = photo.id;
+                
+                // Format creation time
+                const createdDate = photo.mediaMetadata && photo.mediaMetadata.creationTime 
+                    ? new Date(photo.mediaMetadata.creationTime).toLocaleDateString()
+                    : 'Unknown date';
+                
+                // Check if it's a video
+                const isVideo = photo.mediaMetadata && photo.mediaMetadata.video;
+                const mediaIcon = isVideo ? '🎥' : '📸';
+                
+                photoElement.innerHTML = `
+                    <img src="${photo.baseUrl}=w300-h300-c" alt="Google Photo" loading="lazy">
+                    <div class="photo-checkbox">
+                        <span style="display: none;">✓</span>
+                    </div>
+                    <div class="photo-info">
+                        ${mediaIcon} ${createdDate}
+                    </div>
+                `;
+                
+                photoElement.addEventListener('click', () => togglePhotoSelection(photo, photoElement));
+                grid.appendChild(photoElement);
+            });
+        }
+        
+        function togglePhotoSelection(photo, element) {
+            const isSelected = element.classList.contains('selected');
+            
+            if (isSelected) {
+                element.classList.remove('selected');
+                element.querySelector('.photo-checkbox span').style.display = 'none';
+                selectedPhotos = selectedPhotos.filter(p => p.id !== photo.id);
+            } else {
+                element.classList.add('selected');
+                element.querySelector('.photo-checkbox span').style.display = 'block';
+                selectedPhotos.push(photo);
+            }
+            
+            updateSelectionCount();
+        }
+        
+        function updateSelectionCount() {
+            const countElement = document.getElementById('selectedCount');
+            const importBtn = document.getElementById('importBtn');
+            
+            countElement.textContent = selectedPhotos.length;
+            importBtn.disabled = selectedPhotos.length === 0;
+            
+            if (selectedPhotos.length > 0) {
+                importBtn.textContent = `✨ Import ${selectedPhotos.length} Photo${selectedPhotos.length > 1 ? 's' : ''}`;
+            } else {
+                importBtn.textContent = '✨ Import Selected Photos';
+            }
+        }
+        
+        async function importSelectedPhotos() {
+            if (selectedPhotos.length === 0) return;
+            
+            const importBtn = document.getElementById('importBtn');
+            const originalText = importBtn.textContent;
+            
+            importBtn.disabled = true;
+            importBtn.textContent = '⏳ Importing...';
+            
+            try {
+                const response = await fetch('/api/google-photos/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        photos: selectedPhotos.map(p => ({
+                            id: p.id,
+                            baseUrl: p.baseUrl,
+                            filename: p.filename,
+                            mediaMetadata: p.mediaMetadata
+                        }))
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Add imported photos to the media preview
+                    result.media.forEach(media => {
+                        uploadedMedia.push(media);
+                        addMediaPreview(media);
+                    });
+                    
+                    updateInsertButton();
+                    closeGooglePhotosModal();
+                    
+                    const savings = result.totalOriginalSize > result.totalProcessedSize ? 
+                        ` (${formatFileSize(result.totalOriginalSize - result.totalProcessedSize)} saved!)` : '';
+                    alert(`Successfully imported ${result.count} photo${result.count > 1 ? 's' : ''} from Google Photos!${savings}`);
+                } else {
+                    alert('Import failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Import error:', error);
+                alert('Import failed: ' + error.message);
+            } finally {
+                importBtn.disabled = false;
+                importBtn.textContent = originalText;
+            }
+        }
+        
+        function closeGooglePhotosModal() {
+            document.getElementById('googlePhotosModal').style.display = 'none';
+            selectedPhotos = [];
+            updateSelectionCount();
+        }
+        
+        // Modal event handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('googlePhotosModal');
+            const closeBtn = modal.querySelector('.close');
+            
+            closeBtn.addEventListener('click', closeGooglePhotosModal);
+            
+            // Close modal when clicking outside of it
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeGooglePhotosModal();
+                }
+            });
+        });
     </script>
 </body>
 </html>

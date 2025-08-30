@@ -2,33 +2,558 @@
 <html>
 <head>
     <title>User Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0 0 30px 0;
+            font-size: 2.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+        }
+        
+        h2 {
+            color: #1e293b;
+            margin: 40px 0 25px 0;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .add-user-form {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .form-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+        
+        .form-field {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .users-table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: #374151;
+            font-weight: 600;
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .magic-link {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 6px 12px;
+            background: #eff6ff;
+            border-radius: 6px;
+            border: 1px solid #dbeafe;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .magic-link:hover {
+            background: #dbeafe;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .user-email {
+            color: #64748b;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 30px;
+            color: #64748b;
+        }
+        
+        .empty-state h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.3rem;
+        }
+        
+        .flash-messages {
+            margin-bottom: 30px;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .flash-messages .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+        
+        .flash-messages .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .flash-messages .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .form-group {
+                flex-direction: column;
+            }
+            
+            .form-field {
+                min-width: 100%;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 12px 15px;
+            }
+            
+            .magic-link {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+            
+            .btn-danger {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+        }
+        
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .container {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        tr {
+            animation: fadeInUp 0.3s ease-out;
+        }
+        
+        tr:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+        
+        /* Admin checkbox styling */
+        .admin-checkbox {
+            display: flex;
+            align-items: center;
+            min-width: auto !important;
+            flex: 0 0 auto;
+        }
+        
+        .admin-checkbox label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .admin-checkbox input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            transform: scale(1.2);
+            accent-color: #3b82f6;
+        }
+        
+        /* Admin badges */
+        .admin-toggle-btn {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+        
+        .admin-toggle-btn.admin-badge {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #92400e;
+        }
+        
+        .admin-toggle-btn.admin-badge:hover {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .admin-toggle-btn.user-badge {
+            background: #e5e7eb;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .admin-toggle-btn.user-badge:hover {
+            background: #d1d5db;
+            color: #374151;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
+        }
+    </style>
 </head>
 <body>
-    <h1>Manage Users</h1>
-    <form method="POST" action="{{ url_for('manage_users') }}">
-        <input name="name" placeholder="Name" required>
-        <input name="email" placeholder="Email" required type="email">
-        <button type="submit">Add User</button>
-    </form>
-    <h2>Existing Users</h2>
-    <table>
-        <tr><th>Name</th><th>Email</th><th>Magic Link</th><th>Remove</th></tr>
-        {% for user in users %}
-        <tr>
-            <td>{{ user['name'] }}</td>
-            <td>{{ user['email'] }}</td>
-            <td>
-                <a href="{{ url_for('posts', magic_token=user['magic_token'], _external=True) }}" target="_blank">
-                    Magic Link
-                </a>
-            </td>
-            <td>
-                <form method="POST" action="{{ url_for('remove_user', user_id=user['id']) }}" style="display:inline;">
-                    <button type="submit" onclick="return confirm('Remove user?');">Remove</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="container">
+        <h1>👥 User Management</h1>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li class="alert-{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="add-user-form">
+            <h2>➕ Add New User</h2>
+            <form method="POST" action="{{ url_for('manage_users') }}">
+                <div class="form-group">
+                    <div class="form-field">
+                        <label for="name">Full Name</label>
+                        <input type="text" name="name" id="name" placeholder="Enter user's full name" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="email">Email Address</label>
+                        <input type="email" name="email" id="email" placeholder="user@example.com" required>
+                    </div>
+                    <div class="form-field admin-checkbox">
+                        <label for="is_admin">
+                            <input type="checkbox" name="is_admin" id="is_admin" value="1">
+                            Admin User
+                        </label>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">✨ Add User</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <h2>👨‍👩‍👧‍👦 Existing Users</h2>
+        
+        {% if users %}
+            <div class="users-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Admin</th>
+                            <th>Magic Link</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>
+                                <div class="user-name">{{ user['name'] }}</div>
+                            </td>
+                            <td>
+                                <div class="user-email">{{ user['email'] }}</div>
+                            </td>
+                            <td>
+                                <button class="admin-toggle-btn {% if user['is_admin'] %}admin-badge{% else %}user-badge{% endif %}" 
+                                        onclick="toggleAdminStatus({{ user['id'] }})" 
+                                        data-user-id="{{ user['id'] }}">
+                                    {% if user['is_admin'] %}
+                                        🐌 Admin
+                                    {% else %}
+                                        👤 User
+                                    {% endif %}
+                                </button>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('posts', magic_token=user['magic_token'], _external=True) }}" 
+                                   target="_blank" class="magic-link">
+                                    🔗 View Posts
+                                </a>
+                                {% if user['is_admin'] %}
+                                    <br><a href="{{ url_for('create_post', magic_token=user['magic_token'], _external=True) }}" 
+                                           target="_blank" class="magic-link" style="margin-top: 5px;">
+                                        ✏️ Create Post
+                                    </a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ url_for('remove_user', user_id=user['id']) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger" 
+                                            onclick="return confirm('Are you sure you want to remove {{ user.name }}? This action cannot be undone.');">
+                                        🗑️ Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>👥 No users yet</h3>
+                <p>Add your first user above to get started with the family photo gallery!</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        async function toggleAdminStatus(userId) {
+            try {
+                const response = await fetch(`/admin/users/toggle-admin/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update the button appearance
+                    const button = document.querySelector(`[data-user-id="${userId}"]`);
+                    
+                    if (data.is_admin) {
+                        button.className = 'admin-toggle-btn admin-badge';
+                        button.innerHTML = '🐌 Admin';
+                    } else {
+                        button.className = 'admin-toggle-btn user-badge';
+                        button.innerHTML = '👤 User';
+                    }
+                    
+                    // Update the magic links column
+                    const row = button.closest('tr');
+                    const magicLinksCell = row.children[3]; // 4th column (0-indexed)
+                    const viewPostsLink = magicLinksCell.querySelector('.magic-link');
+                    
+                    if (data.is_admin) {
+                        // Add create post link if it doesn't exist
+                        if (!magicLinksCell.querySelector('.magic-link[href*="create-post"]')) {
+                            const createPostLink = document.createElement('a');
+                            createPostLink.href = viewPostsLink.href.replace('/posts/', '/create-post/');
+                            createPostLink.target = '_blank';
+                            createPostLink.className = 'magic-link';
+                            createPostLink.style.marginTop = '5px';
+                            createPostLink.innerHTML = '✏️ Create Post';
+                            
+                            const br = document.createElement('br');
+                            magicLinksCell.appendChild(br);
+                            magicLinksCell.appendChild(createPostLink);
+                        }
+                    } else {
+                        // Remove create post link if it exists
+                        const createPostLink = magicLinksCell.querySelector('.magic-link[href*="create-post"]');
+                        if (createPostLink) {
+                            const br = createPostLink.previousElementSibling;
+                            if (br && br.tagName === 'BR') {
+                                br.remove();
+                            }
+                            createPostLink.remove();
+                        }
+                    }
+                    
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Failed to update admin status');
+                }
+                
+            } catch (error) {
+                console.error('Network error:', error);
+                alert('Network error occurred');
+            }
+        }
+    </script>
 </body>
 </html>

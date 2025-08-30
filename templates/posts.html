@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Family Posts</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .content-area {
+            flex: 1;
+        }
+        
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            color: #1e293b;
+            margin: 0 0 15px 0;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .welcome-message {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        .posts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .post {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .post:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .post h2 {
+            color: #1e293b;
+            font-size: 1.8rem;
+        }
+        
+        .post-content {
+            color: #475569;
+            line-height: 1.7;
+            font-size: 1.1rem;
+            margin: 20px 0;
+        }
+        
+        .post-content h1,
+        .post-content h2,
+        .post-content h3 {
+            color: #1e293b;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        .post-content p {
+            margin-bottom: 1em;
+        }
+        
+        .post-content img {
+            max-width: 60%;
+            height: auto;
+            border-radius: 12px;
+            margin: 15px 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .post-content img:hover {
+            transform: scale(1.05);
+        }
+        
+        .post-content img.expanded {
+            max-width: 100%;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            max-height: 90vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .post-content video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            margin: 15px 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .media-container {
+            margin: 25px 0;
+        }
+        
+        .media-container img {
+            max-width: 60%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .media-container img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .media-container video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .post-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .post-meta-info {
+            text-align: right;
+        }
+        
+        .post-author {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .post-date {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .no-posts {
+            background: white;
+            border-radius: 16px;
+            padding: 60px 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .no-posts h2 {
+            color: #64748b;
+            font-size: 1.5rem;
+            margin: 0 0 15px 0;
+        }
+        
+        .no-posts p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .post {
+                padding: 20px;
+            }
+            
+            .post h2 {
+                font-size: 1.5rem;
+            }
+            
+            .post-content {
+                font-size: 1rem;
+            }
+            
+            .post-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+
+        /* Loading animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .post {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .post:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+        
+        .post:nth-child(odd) {
+            animation-delay: 0.2s;
+        }
+        
+        /* Image overlay for full-size view */
+        .image-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .image-overlay img {
+            max-width: 95%;
+            max-height: 95%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .image-overlay .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        
+        .image-overlay .close-btn:hover {
+            color: #ccc;
+        }
+        
+        /* Sidebar styles */
+        .month-nav {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .month-nav h3 {
+            color: #1e293b;
+            margin: 0 0 20px 0;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        .month-link {
+            display: block;
+            padding: 10px 15px;
+            margin: 5px 0;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        
+        .month-link:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+            transform: translateX(5px);
+        }
+        
+        .month-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .month-link .post-count {
+            float: right;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .current-filter {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #0c4a6e;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        /* Comments styles */
+        .comments-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        .comments-section h4 {
+            color: #1e293b;
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+        }
+        
+        .comments-list {
+            margin-bottom: 20px;
+        }
+        
+        .comment {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .comment-header strong {
+            color: #1e293b;
+            font-size: 14px;
+        }
+        
+        .comment-date {
+            color: #64748b;
+            font-size: 12px;
+        }
+        
+        .comment-content {
+            color: #475569;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        
+        .comment-form {
+            margin-top: 15px;
+        }
+        
+        .comment-form textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .comment-form textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn-comment {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            margin-top: 10px;
+            font-size: 14px;
+            padding: 10px 20px;
+        }
+        
+        .btn-comment:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Reactions styles */
+        .reactions-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .heart-count {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 10px;
+            min-height: 20px;
+            cursor: help;
+        }
+        
+        .heart-count[title]:hover {
+            color: #1e293b;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .section-header h4 {
+            margin: 0;
+        }
+        
+        .heart-btn {
+            background: none;
+            border: 2px solid #e5e7eb;
+            border-radius: 50px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .heart-btn:hover {
+            border-color: #f87171;
+            transform: scale(1.05);
+        }
+        
+        .heart-btn.hearted {
+            background: #fef2f2;
+            border-color: #f87171;
+            color: #dc2626;
+        }
+        
+        .heart-btn .heart-icon {
+            filter: grayscale(100%);
+            transition: filter 0.2s ease;
+        }
+        
+        .heart-btn.hearted .heart-icon {
+            filter: none;
+        }
+        
+        /* Comment thread styles */
+        .comment-thread {
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .main-comment {
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .reply-comment {
+            background: #ffffff;
+            border-bottom: 1px solid #f3f4f6;
+            margin-left: 20px;
+            border-left: 3px solid #3b82f6;
+            position: relative;
+        }
+        
+        .reply-comment:before {
+            content: "↳";
+            position: absolute;
+            left: -15px;
+            top: 15px;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .reply-comment:last-child {
+            border-bottom: none;
+        }
+        
+        .reply-btn {
+            background: none;
+            border: 1px solid #e5e7eb;
+            color: #64748b;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+        
+        .reply-btn:hover {
+            background: #f1f5f9;
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .reply-form-container {
+            margin-top: 10px;
+        }
+        
+        .reply-form textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .reply-form textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .reply-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .btn-reply {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+        
+        .btn-reply:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-cancel {
+            background: #f3f4f6;
+            color: #6b7280;
+            font-size: 12px;
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+        }
+        
+        .btn-cancel:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        /* Delete post button */
+        .delete-post-btn {
+            background: #fee2e2;
+            border: 2px solid #fca5a5;
+            border-radius: 8px;
+            color: #dc2626;
+            font-size: 16px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .delete-post-btn:hover {
+            background: #fecaca;
+            border-color: #f87171;
+            transform: scale(1.05);
+        }
+        
+        /* New! badges */
+        .new-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            animation: pulse 2s infinite;
+        }
+        
+        .new-badge-small {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        /* Load older posts button */
+        .load-older-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.2s ease;
+            margin: 10px 0;
+        }
+        
+        .load-older-btn:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Photo stream link */
+        .photo-stream-link {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            text-align: center;
+        }
+        
+        .photo-stream-link:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+            transform: translateX(0) !important;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐌 Slugranch Familybook</h1>
+        {% if user %}
+            <p class="welcome-message">Welcome, {{ user.name }}! Enjoy browsing our family memories.</p>
+        {% else %}
+            <p class="welcome-message">Welcome to our family photo gallery</p>
+        {% endif %}
+    </div>
+    
+    <div class="main-container">
+        <div class="content-area">
+            {% if current_month %}
+                <div class="current-filter">
+                    📅 Showing posts from {{ current_month[:4] }}-{{ current_month[5:] }}
+                    <br><a href="{{ url_for('posts', magic_token=user.magic_token) }}" style="color: #3b82f6;">← Back to Posts</a>
+                </div>
+            {% endif %}
+            
+            
+            <div class="posts-container">
+                {% for post in posts %}
+                    <article class="post">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
+                            <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                                {{ post['title'] }}
+                                {% if post['created'] > last_login %}
+                                    <span class="new-badge">New!</span>
+                                {% endif %}
+                            </h2>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="post-meta-info">
+                                    {% if post['author_name'] %}
+                                        <div class="post-author">by {{ post['author_name'] }}</div>
+                                    {% endif %}
+                                    <div class="post-date">{{ post['created'][:16] }}</div>
+                                </div>
+                                {% if user and user['is_admin'] %}
+                                    <form method="POST" action="{{ url_for('delete_post', magic_token=user.magic_token, post_id=post['id']) }}" style="margin: 0;">
+                                        <button type="submit" class="delete-post-btn" 
+                                                onclick="return confirm('Are you sure you want to delete this post? This action cannot be undone.');">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="post-content">
+                            {{ post['content']|safe }}
+                        </div>
+                        
+                        
+                        {% if user %}
+                            <div class="reactions-section">
+                                <div class="heart-count" 
+                                     {% if heart_users_by_post.get(post['id']) %}
+                                     title="{{ heart_users_by_post[post['id']]|join(', ') }} liked this"
+                                     {% endif %}>
+                                    {% set heart_count = reactions_by_post.get(post['id'], 0) %}
+                                    {% if heart_count > 0 %}
+                                        ❤️ {{ heart_count }} {{ 'person' if heart_count == 1 else 'people' }} liked this
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="comments-section">
+                                <div class="section-header">
+                                    <h4>💬 Comments</h4>
+                                    <button class="heart-btn {% if user_reactions.get(post['id']) %}hearted{% endif %}" 
+                                            onclick="toggleHeart({{ post['id'] }})" 
+                                            data-post-id="{{ post['id'] }}">
+                                        <span class="heart-icon">❤️</span>
+                                    </button>
+                                </div>
+                                
+                                {% if comments_by_post.get(post['id']) %}
+                                    <div class="comments-list">
+                                        {% for comment in comments_by_post[post['id']] %}
+                                            {% if not comment['parent_comment_id'] %}
+                                                <div class="comment-thread" data-comment-id="{{ comment['id'] }}">
+                                                    <div class="comment main-comment">
+                                                        <div class="comment-header">
+                                                            <strong>{{ comment['user_name'] }}{% if comment['user_is_admin'] %} 🐌{% endif %}</strong>
+                                                            <span class="comment-date">
+                                                                {{ comment['created'] }}
+                                                                {% if comment['created'] > last_login %}
+                                                                    <span class="new-badge-small">New!</span>
+                                                                {% endif %}
+                                                            </span>
+                                                        </div>
+                                                        <div class="comment-content">{{ comment['content'] }}</div>
+                                                        
+                                                        <!-- Reply button for admins or for users replying to admin comments -->
+                                                        {% if user['is_admin'] or (comment['user_is_admin'] and not user['is_admin']) %}
+                                                            <button class="reply-btn" onclick="showReplyForm({{ comment['id'] }})">
+                                                                💬 Reply
+                                                            </button>
+                                                            <div class="reply-form-container" id="reply-form-{{ comment['id'] }}" style="display: none;">
+                                                                <form method="POST" action="{{ url_for('add_comment', magic_token=user.magic_token) }}" class="reply-form">
+                                                                    <input type="hidden" name="post_id" value="{{ post['id'] }}">
+                                                                    <input type="hidden" name="parent_comment_id" value="{{ comment['id'] }}">
+                                                                    <textarea name="content" placeholder="Reply to {{ comment['user_name'] }}..." required></textarea>
+                                                                    <div class="reply-actions">
+                                                                        <button type="submit" class="btn btn-reply">Send Reply</button>
+                                                                        <button type="button" class="btn btn-cancel" onclick="hideReplyForm({{ comment['id'] }})">Cancel</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    
+                                                    <!-- Show replies in conversation flow -->
+                                                    {% for reply in comments_by_post[post['id']] %}
+                                                        {% if reply['parent_comment_id'] == comment['id'] %}
+                                                            <div class="comment reply-comment">
+                                                                <div class="comment-header">
+                                                                    <strong>{{ reply['user_name'] }}{% if reply['user_is_admin'] %} 🐌{% endif %}</strong>
+                                                                    <span class="comment-date">
+                                                                        {{ reply['created'] }}
+                                                                        {% if reply['created'] > last_login %}
+                                                                            <span class="new-badge-small">New!</span>
+                                                                        {% endif %}
+                                                                    </span>
+                                                                </div>
+                                                                <div class="comment-content">{{ reply['content'] }}</div>
+                                                                
+                                                                <!-- Allow further replies -->
+                                                                {% if user['is_admin'] or (reply['user_is_admin'] and not user['is_admin']) %}
+                                                                    <button class="reply-btn" onclick="showReplyForm({{ reply['id'] }})">
+                                                                        💬 Reply
+                                                                    </button>
+                                                                    <div class="reply-form-container" id="reply-form-{{ reply['id'] }}" style="display: none;">
+                                                                        <form method="POST" action="{{ url_for('add_comment', magic_token=user.magic_token) }}" class="reply-form">
+                                                                            <input type="hidden" name="post_id" value="{{ post['id'] }}">
+                                                                            <input type="hidden" name="parent_comment_id" value="{{ comment['id'] }}">
+                                                                            <textarea name="content" placeholder="Reply to {{ reply['user_name'] }}..." required></textarea>
+                                                                            <div class="reply-actions">
+                                                                                <button type="submit" class="btn btn-reply">Send Reply</button>
+                                                                                <button type="button" class="btn btn-cancel" onclick="hideReplyForm({{ reply['id'] }})">Cancel</button>
+                                                                            </div>
+                                                                        </form>
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                
+                                <form method="POST" action="{{ url_for('add_comment', magic_token=user.magic_token) }}" class="comment-form">
+                                    <input type="hidden" name="post_id" value="{{ post['id'] }}">
+                                    <textarea name="content" placeholder="Add a comment..." required></textarea>
+                                    <button type="submit" class="btn btn-comment">Add Comment</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+                
+                {% if not posts %}
+                    <div class="no-posts">
+                        {% if current_month %}
+                            <h2>📅 No posts in {{ current_month[:4] }}-{{ current_month[5:] }}</h2>
+                            <p>No posts were made during this month.</p>
+                        {% elif current_view == 'new' %}
+                            <h2>🌟 No new posts!</h2>
+                            <p>No posts since your last visit. Check out all posts to see what you might have missed!</p>
+                            <a href="{{ url_for('posts', magic_token=user.magic_token, show_type='all') }}" class="load-older-btn">📚 View All Posts</a>
+                        {% else %}
+                            <h2>📝 No posts yet!</h2>
+                            <p>No posts have been created yet.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                
+                <!-- Load More Posts button at bottom -->
+                {% if posts and current_view == 'new' %}
+                    <div style="text-align: center; margin-top: 40px; padding: 30px;">
+                        <a href="{{ url_for('posts', magic_token=user.magic_token, show_type='all') }}" class="load-older-btn">
+                            📚 Load More Posts
+                        </a>
+                        <p style="color: rgba(255,255,255,0.8); margin-top: 15px; font-size: 14px;">
+                            See all posts from the beginning of time
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="month-nav" style="margin-bottom: 20px;">
+                <h3>📸 Photo Stream</h3>
+                <a href="{{ url_for('photo_stream', magic_token=user.magic_token) }}" class="month-link photo-stream-link">
+                    🖼️ View All Photos
+                </a>
+            </div>
+            
+            <div class="month-nav">
+                <h3>📅 Browse by Month</h3>
+                
+                {% if not current_month %}
+                    <div class="month-link active">
+                        📆 Last 30 Days
+                        <span class="post-count">{{ posts|length }}</span>
+                    </div>
+                {% else %}
+                    <a href="{{ url_for('posts', magic_token=user.magic_token) }}" class="month-link">
+                        📆 Last 30 Days
+                    </a>
+                {% endif %}
+                
+                {% for month_data in available_months %}
+                    {% set month_name = month_data.month %}
+                    {% set year = month_data.year %}
+                    {% set month_num = month_data.month_num %}
+                    {% set post_count = month_data.post_count %}
+                    
+                    {% if current_month == month_name %}
+                        <div class="month-link active">
+                            📅 {{ year }}-{{ month_num }}
+                            <span class="post-count">{{ post_count }}</span>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('posts', magic_token=user.magic_token, year_month=month_name) }}" class="month-link">
+                            📅 {{ year }}-{{ month_num }}
+                            <span class="post-count">{{ post_count }}</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if not available_months %}
+                    <div style="color: #64748b; text-align: center; padding: 20px;">
+                        No posts yet
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image overlay for full-size viewing -->
+    <div class="image-overlay" id="imageOverlay">
+        <span class="close-btn" onclick="closeImageOverlay()">&times;</span>
+        <img id="overlayImage" src="" alt="">
+    </div>
+    
+    <script>
+        function showImageOverlay(imgSrc) {
+            const overlay = document.getElementById('imageOverlay');
+            const overlayImg = document.getElementById('overlayImage');
+            
+            overlayImg.src = imgSrc;
+            overlay.style.display = 'block';
+            
+            // Add escape key handler
+            document.addEventListener('keydown', handleEscapeKey);
+        }
+        
+        function closeImageOverlay() {
+            const overlay = document.getElementById('imageOverlay');
+            overlay.style.display = 'none';
+            
+            // Remove escape key handler
+            document.removeEventListener('keydown', handleEscapeKey);
+        }
+        
+        function handleEscapeKey(event) {
+            if (event.key === 'Escape') {
+                closeImageOverlay();
+            }
+        }
+        
+        // Add click handlers to all images when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const images = document.querySelectorAll('.post-content img, .media-container img');
+            
+            images.forEach(img => {
+                img.addEventListener('click', function() {
+                    showImageOverlay(this.src);
+                });
+            });
+            
+            // Close overlay when clicking on background
+            document.getElementById('imageOverlay').addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeImageOverlay();
+                }
+            });
+        });
+        
+        // Heart reaction functionality
+        async function toggleHeart(postId) {
+            try {
+                const response = await fetch(`/toggle-heart/{{ user.magic_token if user else '' }}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `post_id=${postId}`
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    return;
+                }
+                
+                // Update heart button appearance
+                const heartBtn = document.querySelector(`[data-post-id="${postId}"]`);
+                if (data.hearted) {
+                    heartBtn.classList.add('hearted');
+                } else {
+                    heartBtn.classList.remove('hearted');
+                }
+                
+                // Update heart count display
+                const heartCountDiv = heartBtn.closest('.post').querySelector('.heart-count');
+                if (data.count > 0) {
+                    heartCountDiv.innerHTML = `❤️ ${data.count} ${data.count === 1 ? 'person' : 'people'} liked this`;
+                } else {
+                    heartCountDiv.innerHTML = '';
+                }
+                
+            } catch (error) {
+                console.error('Network error:', error);
+            }
+        }
+        
+        // Reply functionality
+        function showReplyForm(commentId) {
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            replyForm.style.display = 'block';
+            replyForm.querySelector('textarea').focus();
+        }
+        
+        function hideReplyForm(commentId) {
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            replyForm.style.display = 'none';
+            replyForm.querySelector('textarea').value = '';
+        }
+    </script>
+</body>
+</html>
