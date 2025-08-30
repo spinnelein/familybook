@@ -123,6 +123,29 @@
         .container {
             animation: fadeInUp 0.8s ease-out;
         }
+        
+        .admin-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(55, 65, 81, 0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+            opacity: 0.6;
+        }
+        
+        .admin-link:hover {
+            opacity: 1;
+            background: rgba(55, 65, 81, 0.9);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -134,18 +157,13 @@
             Welcome to our private family photo sharing platform! This is a secure space for our family to share memories, photos, and stay connected.
         </div>
         
-        <div class="instructions">
-            <h3>📋 How to Access</h3>
-            <p><strong>Step 1:</strong> Contact Aaron or Ryan to get your personal access link</p>
-            <p><strong>Step 2:</strong> Use your unique magic link to view and interact with family posts</p>
-            <p><strong>Step 3:</strong> If you're an admin, you can create posts and manage content</p>
-        </div>
-        
         <div class="contact-info">
             <h3>👥 Get Your Access</h3>
             <p>Contact <strong>Aaron</strong> or <strong>Ryan</strong> to receive your personalized magic link.</p>
             <p>Each family member gets their own secure access link for privacy and personalization.</p>
         </div>
     </div>
+    
+    <a href="{{ url_for('admin_login') }}" class="admin-link">🔐 Admin</a>
 </body>
 </html>

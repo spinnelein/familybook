@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:developers.google.com)",
+      "Bash(del token.pickle)",
+      "Bash(rm:*)",
+      "Bash(pip freeze)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git log:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(cp:*)",
+      "Bash(wc:*)",
+      "Bash(sqlite3:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": []
+  }
+}

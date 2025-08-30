@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Setup - Familybook OAuth Configuration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .setup-container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            max-width: 700px;
+            width: 90%;
+        }
+        
+        .setup-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .setup-title {
+            color: #1e293b;
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .setup-subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin: 0 0 20px 0;
+            font-weight: 400;
+        }
+        
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #92400e;
+        }
+        
+        .warning-box h3 {
+            margin: 0 0 10px 0;
+            color: #92400e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .form-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-section h2 {
+            color: #1e293b;
+            margin: 0 0 20px 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+        
+        .form-actions {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        .flash-messages {
+            margin-bottom: 30px;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .flash-messages .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+        
+        .flash-messages .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .flash-messages .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .instructions {
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .instructions h3 {
+            color: #1e40af;
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .instructions ol {
+            color: #1e40af;
+            line-height: 1.6;
+        }
+        
+        .instructions ol li {
+            margin-bottom: 8px;
+        }
+        
+        .instructions code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1 class="setup-title">⚙️ Admin Setup</h1>
+            <p class="setup-subtitle">Configure Google OAuth for admin authentication</p>
+            
+            <div class="warning-box">
+                <h3>⚠️ Security Notice</h3>
+                <p>This setup page is only accessible when OAuth is not yet configured. Once you save your OAuth settings, this page will redirect to the login page for security.</p>
+            </div>
+        </div>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li class="alert-{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Google Cloud Console Setup</h3>
+            <ol>
+                <li>Go to <strong>Google Cloud Console</strong> → APIs & Services → Credentials</li>
+                <li>Create a new <strong>OAuth 2.0 Client ID</strong> (Web application)</li>
+                <li>Add <code>{{ request.url_root }}admin/oauth/callback</code> to Authorized redirect URIs</li>
+                <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> below</li>
+                <li>Enable the <strong>Google+ API</strong> for your project</li>
+            </ol>
+        </div>
+        
+        <form method="POST">
+            <div class="form-section">
+                <h2>🔐 Google OAuth Configuration</h2>
+                <div class="form-group">
+                    <label for="oauth_client_id">Google OAuth Client ID</label>
+                    <input type="text" name="oauth_client_id" id="oauth_client_id" 
+                           value="{{ settings.get('oauth_client_id', {}).get('value', '') }}" 
+                           placeholder="xxxxx.apps.googleusercontent.com"
+                           required>
+                    <div class="help-text">Get this from Google Cloud Console OAuth credentials</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="oauth_client_secret">Google OAuth Client Secret</label>
+                    <input type="password" name="oauth_client_secret" id="oauth_client_secret" 
+                           value="{{ settings.get('oauth_client_secret', {}).get('value', '') }}" 
+                           placeholder="Client secret from Google Cloud Console"
+                           required>
+                    <div class="help-text">Keep this secret secure - used for OAuth authentication</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="oauth_redirect_uri">OAuth Redirect URI</label>
+                    <input type="text" name="oauth_redirect_uri" id="oauth_redirect_uri" 
+                           value="{{ settings.get('oauth_redirect_uri', {}).get('value', request.url_root + 'admin/oauth/callback') }}" 
+                           placeholder="{{ request.url_root }}admin/oauth/callback"
+                           required>
+                    <div class="help-text">Must exactly match the redirect URI in Google Cloud Console</div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">💾 Save OAuth Configuration</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

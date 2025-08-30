@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Polling</title>
+</head>
+<body>
+    <h1>Test Google Photos Polling</h1>
+    <button onclick="testPolling()">Test Poll Session</button>
+    <div id="results"></div>
+
+    <script>
+        async function testPolling() {
+            const sessionId = 'e94bd304-1ab4-440f-a4bc-54094baae781'; // Your session ID
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                console.log('Testing polling for session:', sessionId);
+                resultsDiv.innerHTML = '<p>Testing polling...</p>';
+                
+                const response = await fetch(`/api/google-photos/poll-session/${sessionId}`);
+                const pollData = await response.json();
+                
+                console.log('Poll response:', pollData);
+                resultsDiv.innerHTML = `
+                    <h3>Poll Results:</h3>
+                    <pre>${JSON.stringify(pollData, null, 2)}</pre>
+                `;
+                
+                if (pollData.success && pollData.completed && pollData.selectedItems) {
+                    console.log('Found selected items:', pollData.selectedItems.length);
+                    resultsDiv.innerHTML += `
+                        <h3>Selected Items: ${pollData.selectedItems.length}</h3>
+                        <button onclick="testDownload(${JSON.stringify(pollData.selectedItems).replace(/"/g, '&quot;')})">Test Download</button>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Polling error:', error);
+                resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testDownload(selectedItems) {
+            console.log('Testing download with items:', selectedItems);
+            
+            try {
+                const response = await fetch('/api/google-photos/download-selected', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        selectedItems: selectedItems
+                    })
+                });
+                
+                const downloadData = await response.json();
+                console.log('Download response:', downloadData);
+                
+                document.getElementById('results').innerHTML += `
+                    <h3>Download Results:</h3>
+                    <pre>${JSON.stringify(downloadData, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                document.getElementById('results').innerHTML += `<p>Download Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

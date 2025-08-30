@@ -484,6 +484,21 @@
                 </div>
             </div>
 
+            <div style="margin-bottom: 20px;">
+                <label for="tags">Tags</label>
+                {% if available_tags %}
+                    <input type="text" name="tags" id="tags" placeholder="Available tags: {{ ', '.join(available_tags) }}{% if 'major' not in available_tags %}, major{% endif %}">
+                {% else %}
+                    <input type="text" name="tags" id="tags" placeholder="Enter tags separated by commas (e.g., major, photos, news)">
+                {% endif %}
+                <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">
+                    💡 Use "major" tag to send notifications to all users (otherwise only users with "All Posts" preference get notified)
+                    {% if available_tags %}
+                        <br>🏷️ Filter tags: <strong>{{ ', '.join(available_tags) }}</strong>
+                    {% endif %}
+                </div>
+            </div>
+
             <label for="editor">Content</label>
             <textarea id="editor" name="content"></textarea>
 
@@ -551,12 +566,12 @@
             
             <div class="modal-footer">
                 <div class="selection-count">
-                    <span id="selectedCount">0</span> photos selected
+                    <span id="selectedCount">0</span> media selected
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn btn-primary" onclick="closeGooglePhotosModal()">Cancel</button>
                     <button type="button" class="btn btn-success" onclick="importSelectedPhotos()" id="importBtn" disabled>
-                        ✨ Import Selected Photos
+                        ✨ Import Selected Media
                     </button>
                 </div>
             </div>
@@ -1052,14 +1067,14 @@
                 }
                 
                 isDownloading = true;
-                console.log('Downloading selected photos...');
+                console.log('Downloading selected media...');
                 
                 // Show download progress
                 const grid = document.getElementById('photosGrid');
                 grid.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
-                        <h3 style="color: #1e293b;">⏳ Downloading Photos...</h3>
-                        <p>Processing ${selectedItems.length} selected photo(s) from Google Photos...</p>
+                        <h3 style="color: #1e293b;">⏳ Downloading Media...</h3>
+                        <p>Processing ${selectedItems.length} selected media item(s) from Google Photos...</p>
                         <div style="margin: 20px 0;">
                             <div style="width: 100%; background: #e5e7eb; border-radius: 10px; height: 8px; overflow: hidden;">
                                 <div style="width: 0%; background: linear-gradient(90deg, #3b82f6, #1d4ed8); height: 100%; border-radius: 10px; animation: progress 3s ease-in-out infinite;" id="progress-bar"></div>
@@ -1081,9 +1096,9 @@
                 const downloadData = await response.json();
                 
                 if (downloadData.success) {
-                    console.log('Successfully downloaded photos:', downloadData.media);
+                    console.log('Successfully downloaded media:', downloadData.media);
                     
-                    // Add downloaded photos to the media preview
+                    // Add downloaded media to the media preview
                     downloadData.media.forEach(media => {
                         uploadedMedia.push(media);
                         addMediaPreview(media);
@@ -1100,7 +1115,7 @@
                 
             } catch (error) {
                 console.error('Download error:', error);
-                showPickerResult('Download Error', `Failed to download photos: ${error.message}`, 'error');
+                showPickerResult('Download Error', `Failed to download media: ${error.message}`, 'error');
             } finally {
                 isDownloading = false;
             }
@@ -1200,9 +1215,9 @@
             importBtn.disabled = selectedPhotos.length === 0;
             
             if (selectedPhotos.length > 0) {
-                importBtn.textContent = `✨ Import ${selectedPhotos.length} Photo${selectedPhotos.length > 1 ? 's' : ''}`;
+                importBtn.textContent = `✨ Import ${selectedPhotos.length} Media Item${selectedPhotos.length > 1 ? 's' : ''}`;
             } else {
-                importBtn.textContent = '✨ Import Selected Photos';
+                importBtn.textContent = '✨ Import Selected Media';
             }
         }
         
@@ -1234,7 +1249,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Add imported photos to the media preview
+                    // Add imported media to the media preview
                     result.media.forEach(media => {
                         uploadedMedia.push(media);
                         addMediaPreview(media);
@@ -1245,7 +1260,7 @@
                     
                     const savings = result.totalOriginalSize > result.totalProcessedSize ? 
                         ` (${formatFileSize(result.totalOriginalSize - result.totalProcessedSize)} saved!)` : '';
-                    alert(`Successfully imported ${result.count} photo${result.count > 1 ? 's' : ''} from Google Photos!${savings}`);
+                    alert(`Successfully imported ${result.count} media item${result.count > 1 ? 's' : ''} from Google Photos!${savings}`);
                 } else {
                     alert('Import failed: ' + result.error);
                 }

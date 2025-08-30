@@ -63,11 +63,41 @@ def list_recent_photos(page_size=20):
     items = results.get('mediaItems', [])
     return items
 
-def download_photo(media_item, save_dir='static/imported'):
-    url = media_item['baseUrl'] + "=d"  # Download original quality
+def download_media(media_item, save_dir='static/imported'):
+    # Check if this is a video using multiple detection methods
+    mime_type = media_item.get('mimeType', '')
+    media_metadata = media_item.get('mediaMetadata', {})
+    is_video = mime_type.startswith('video/') or media_metadata.get('video') is not None
+    
+    # Use appropriate download parameter based on media type
+    if is_video:
+        url = media_item['baseUrl'] + "=dv"  # Download original video
+        # Determine video extension from mimeType
+        if 'mp4' in mime_type:
+            ext = 'mp4'
+        elif 'mov' in mime_type:
+            ext = 'mov'
+        elif 'webm' in mime_type:
+            ext = 'webm'
+        else:
+            ext = 'mp4'  # Default video extension
+    else:
+        url = media_item['baseUrl'] + "=d"   # Download original image
+        # Determine image extension from mimeType
+        if 'jpeg' in mime_type or 'jpg' in mime_type:
+            ext = 'jpg'
+        elif 'png' in mime_type:
+            ext = 'png'
+        elif 'gif' in mime_type:
+            ext = 'gif'
+        elif 'webp' in mime_type:
+            ext = 'webp'
+        else:
+            ext = 'jpg'  # Default image extension
+    
     response = requests.get(url)
     if response.status_code == 200:
-        filename = f"{media_item['id']}.jpg"
+        filename = f"{media_item['id']}.{ext}"
         path = os.path.join(save_dir, filename)
         os.makedirs(save_dir, exist_ok=True)
         with open(path, 'wb') as f:

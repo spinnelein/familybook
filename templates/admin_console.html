@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>User Management</title>
+    <title>Admin Console</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -44,7 +44,7 @@
             gap: 10px;
         }
         
-        .add-user-form {
+        .add-user-form, .add-tag-form {
             background: #f8fafc;
             border: 2px solid #e2e8f0;
             border-radius: 12px;
@@ -73,7 +73,9 @@
         }
         
         input[type="text"],
-        input[type="email"] {
+        input[type="email"],
+        input[type="color"],
+        select {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid #e5e7eb;
@@ -84,7 +86,9 @@
         }
         
         input[type="text"]:focus,
-        input[type="email"]:focus {
+        input[type="email"]:focus,
+        input[type="color"]:focus,
+        select:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -139,7 +143,7 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
         
-        .users-table-container {
+        .users-table-container, .tags-table-container {
             background: white;
             border-radius: 12px;
             overflow: hidden;
@@ -208,15 +212,48 @@
             color: #64748b;
         }
         
-        .empty-state {
-            text-align: center;
-            padding: 60px 30px;
-            color: #64748b;
+        .admin-toggle-btn {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-block;
         }
         
-        .empty-state h3 {
-            margin: 0 0 10px 0;
-            font-size: 1.3rem;
+        .admin-toggle-btn.admin-badge {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #92400e;
+        }
+        
+        .admin-toggle-btn.admin-badge:hover {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .admin-toggle-btn.user-badge {
+            background: #e5e7eb;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .admin-toggle-btn.user-badge:hover {
+            background: #d1d5db;
+            color: #374151;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
+        }
+        
+        .tag-color-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            border: 2px solid #e5e7eb;
         }
         
         .flash-messages {
@@ -253,137 +290,11 @@
             color: #1e40af;
             border-left: 4px solid #3b82f6;
         }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            body {
-                padding: 15px;
-            }
-            
-            .container {
-                padding: 25px;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-            
-            .form-group {
-                flex-direction: column;
-            }
-            
-            .form-field {
-                min-width: 100%;
-            }
-            
-            table {
-                font-size: 12px;
-            }
-            
-            th, td {
-                padding: 12px 15px;
-            }
-            
-            .magic-link {
-                font-size: 12px;
-                padding: 4px 8px;
-            }
-            
-            .btn-danger {
-                font-size: 11px;
-                padding: 6px 12px;
-            }
-        }
-        
-        /* Animation */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .container {
-            animation: fadeInUp 0.5s ease-out;
-        }
-        
-        tr {
-            animation: fadeInUp 0.3s ease-out;
-        }
-        
-        tr:nth-child(even) {
-            animation-delay: 0.1s;
-        }
-        
-        /* Admin checkbox styling */
-        .admin-checkbox {
-            display: flex;
-            align-items: center;
-            min-width: auto !important;
-            flex: 0 0 auto;
-        }
-        
-        .admin-checkbox label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 0;
-            cursor: pointer;
-            font-weight: 500;
-            color: #374151;
-        }
-        
-        .admin-checkbox input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-            transform: scale(1.2);
-            accent-color: #3b82f6;
-        }
-        
-        /* Admin badges */
-        .admin-toggle-btn {
-            border: none;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-block;
-        }
-        
-        .admin-toggle-btn.admin-badge {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: #92400e;
-        }
-        
-        .admin-toggle-btn.admin-badge:hover {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-        }
-        
-        .admin-toggle-btn.user-badge {
-            background: #e5e7eb;
-            color: #6b7280;
-            font-weight: 500;
-        }
-        
-        .admin-toggle-btn.user-badge:hover {
-            background: #d1d5db;
-            color: #374151;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>👥 User Management</h1>
+        <h1>⚙️ Admin Console</h1>
         
         <div class="flash-messages">
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -397,32 +308,17 @@
             {% endwith %}
         </div>
         
-        <div class="add-user-form">
-            <h2>➕ Add New User</h2>
-            <form method="POST" action="{{ url_for('manage_users') }}">
-                <div class="form-group">
-                    <div class="form-field">
-                        <label for="name">Full Name</label>
-                        <input type="text" name="name" id="name" placeholder="Enter user's full name" required>
-                    </div>
-                    <div class="form-field">
-                        <label for="email">Email Address</label>
-                        <input type="email" name="email" id="email" placeholder="user@example.com" required>
-                    </div>
-                    <div class="form-field admin-checkbox">
-                        <label for="is_admin">
-                            <input type="checkbox" name="is_admin" id="is_admin" value="1">
-                            Admin User
-                        </label>
-                    </div>
-                    <div>
-                        <button type="submit" class="btn btn-primary">✨ Add User</button>
-                    </div>
-                </div>
-            </form>
+        {% if not oauth_configured %}
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 20px; margin-bottom: 30px; color: #92400e;">
+            <h3 style="margin: 0 0 10px 0; color: #92400e; display: flex; align-items: center; gap: 8px;">
+                ⚠️ Security Warning
+            </h3>
+            <p style="margin: 0 0 10px 0;">OAuth is not configured. The admin console is currently accessible without authentication.</p>
+            <a href="{{ url_for('admin_settings') }}" style="background: #f59e0b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600;">Configure OAuth Security →</a>
         </div>
+        {% endif %}
         
-        <h2>👨‍👩‍👧‍👦 Existing Users</h2>
+        <h2>👨‍👩‍👧‍👦 Users</h2>
         
         {% if users %}
             <div class="users-table-container">
@@ -431,6 +327,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Email Prefs</th>
                             <th>Admin</th>
                             <th>Magic Link</th>
                             <th>Actions</th>
@@ -444,6 +341,14 @@
                             </td>
                             <td>
                                 <div class="user-email">{{ user['email'] }}</div>
+                            </td>
+                            <td>
+                                <select onchange="updateNotificationPrefs({{ user['id'] }}, this.value)" 
+                                        style="width: auto; padding: 6px 10px; font-size: 12px;">
+                                    <option value="all" {% if user['email_notifications'] == 'all' %}selected{% endif %}>📧 All Posts</option>
+                                    <option value="major" {% if user['email_notifications'] == 'major' %}selected{% endif %}>🚨 Major Only</option>
+                                    <option value="none" {% if user['email_notifications'] == 'none' %}selected{% endif %}>🔕 No Emails</option>
+                                </select>
                             </td>
                             <td>
                                 <button class="admin-toggle-btn {% if user['is_admin'] %}admin-badge{% else %}user-badge{% endif %}" 
@@ -481,15 +386,121 @@
                     </tbody>
                 </table>
             </div>
-        {% else %}
-            <div class="empty-state">
-                <h3>👥 No users yet</h3>
-                <p>Add your first user above to get started with the family photo gallery!</p>
+        {% endif %}
+        
+        <div class="add-user-form">
+            <h2>➕ Add New User</h2>
+            <form method="POST" action="{{ url_for('admin_console') }}">
+                <div class="form-group">
+                    <div class="form-field">
+                        <label for="name">Full Name</label>
+                        <input type="text" name="name" id="name" placeholder="Enter user's full name" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="email">Email Address</label>
+                        <input type="email" name="email" id="email" placeholder="user@example.com" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="email_notifications">Email Notifications</label>
+                        <select name="email_notifications" id="email_notifications">
+                            <option value="all">All Posts</option>
+                            <option value="major">Major Posts Only</option>
+                            <option value="none">No Emails</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">✨ Add User</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <h2>🏷️ Filter Tags</h2>
+        
+        {% if filter_tags %}
+            <div class="tags-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tag</th>
+                            <th>Display Name</th>
+                            <th>Color</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tag in filter_tags %}
+                        <tr>
+                            <td>{{ tag['name'] }}</td>
+                            <td>{{ tag['display_name'] }}</td>
+                            <td>
+                                <span class="tag-color-preview" style="background-color: {{ tag['color'] }}"></span>
+                                {{ tag['color'] }}
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ url_for('remove_filter_tag', tag_id=tag['id']) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger" 
+                                            onclick="return confirm('Remove filter tag {{ tag.display_name }}?');">
+                                        🗑️ Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         {% endif %}
+        
+        <div class="add-tag-form">
+            <h2>➕ Add Filter Tag</h2>
+            <form method="POST" action="{{ url_for('add_filter_tag') }}">
+                <div class="form-group">
+                    <div class="form-field">
+                        <label for="tag_name">Tag Name</label>
+                        <input type="text" name="name" id="tag_name" placeholder="photos, news, recipes..." required>
+                    </div>
+                    <div class="form-field">
+                        <label for="tag_display_name">Display Name</label>
+                        <input type="text" name="display_name" id="tag_display_name" placeholder="Photos, News, Recipes..." required>
+                    </div>
+                    <div class="form-field" style="flex: 0 0 150px;">
+                        <label for="tag_color">Color</label>
+                        <input type="color" name="color" id="tag_color" value="#3b82f6">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">🏷️ Add Tag</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="container" style="text-align: center; margin-top: 30px;">
+        <a href="{{ url_for('admin_settings') }}" class="btn btn-success">⚙️ Email Settings</a>
     </div>
     
     <script>
+        async function updateNotificationPrefs(userId, preference) {
+            try {
+                const response = await fetch(`/admin/users/update-notifications/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `email_notifications=${preference}`
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    alert('Failed to update email preferences');
+                }
+            } catch (error) {
+                console.error('Error updating notification preferences:', error);
+                alert('Network error occurred');
+            }
+        }
+        
         async function toggleAdminStatus(userId) {
             try {
                 const response = await fetch(`/admin/users/toggle-admin/${userId}`, {
@@ -515,7 +526,7 @@
                     
                     // Update the magic links column
                     const row = button.closest('tr');
-                    const magicLinksCell = row.children[3]; // 4th column (0-indexed)
+                    const magicLinksCell = row.children[4]; // 5th column (0-indexed)
                     const viewPostsLink = magicLinksCell.querySelector('.magic-link');
                     
                     if (data.is_admin) {

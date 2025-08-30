@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Settings - Slugranch Familybook</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0 0 30px 0;
+            font-size: 2.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+        }
+        
+        .form-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-section h2 {
+            color: #1e293b;
+            margin: 0 0 20px 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            transform: scale(1.2);
+            accent-color: #3b82f6;
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            font-weight: 500;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+        
+        .btn-test {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            margin-left: 10px;
+        }
+        
+        .btn-test:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .form-actions {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        .flash-messages {
+            margin-bottom: 30px;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .flash-messages .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+        
+        .flash-messages .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .status-enabled {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ Email Settings</h1>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li class="alert-{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <form method="POST">
+            <div class="form-section">
+                <h2>🔐 Google OAuth Configuration</h2>
+                <div class="form-group">
+                    <label for="oauth_client_id">Google OAuth Client ID</label>
+                    <input type="text" name="oauth_client_id" id="oauth_client_id" 
+                           value="{{ settings.get('oauth_client_id', {}).get('value', '') }}" 
+                           placeholder="xxxxx.apps.googleusercontent.com">
+                    <div class="help-text">Get this from Google Cloud Console OAuth credentials</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="oauth_client_secret">Google OAuth Client Secret</label>
+                    <input type="password" name="oauth_client_secret" id="oauth_client_secret" 
+                           value="{{ settings.get('oauth_client_secret', {}).get('value', '') }}" 
+                           placeholder="Client secret from Google Cloud Console">
+                    <div class="help-text">Keep this secret secure - used for OAuth authentication</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="oauth_redirect_uri">OAuth Redirect URI</label>
+                    <input type="text" name="oauth_redirect_uri" id="oauth_redirect_uri" 
+                           value="{{ settings.get('oauth_redirect_uri', {}).get('value', request.url_root + 'admin/oauth/callback') }}" 
+                           placeholder="http://localhost:5000/admin/oauth/callback">
+                    <div class="help-text">Must match the redirect URI configured in Google Cloud Console</div>
+                </div>
+                
+                <div class="status-indicator {% if settings.get('oauth_client_id', {}).get('value') and settings.get('oauth_client_secret', {}).get('value') %}status-enabled{% else %}status-disabled{% endif %}">
+                    {% if settings.get('oauth_client_id', {}).get('value') and settings.get('oauth_client_secret', {}).get('value') %}
+                        ✅ OAuth Configured
+                    {% else %}
+                        ❌ OAuth Not Configured
+                    {% endif %}
+                </div>
+            </div>
+        
+            <div class="form-section">
+                <h2>📧 Email Notifications</h2>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="notifications_enabled" id="notifications_enabled" 
+                               {% if settings['notifications_enabled']['value'] == 'true' %}checked{% endif %}>
+                        <label for="notifications_enabled">Enable email notifications for new posts</label>
+                    </div>
+                    <div class="status-indicator {% if settings['notifications_enabled']['value'] == 'true' %}status-enabled{% else %}status-disabled{% endif %}">
+                        {% if settings['notifications_enabled']['value'] == 'true' %}
+                            ✅ Notifications Enabled
+                        {% else %}
+                            ❌ Notifications Disabled
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>📮 SMTP Server Settings</h2>
+                <div class="form-group">
+                    <label for="smtp_server">SMTP Server</label>
+                    <input type="text" name="smtp_server" id="smtp_server" 
+                           value="{{ settings['smtp_server']['value'] }}" 
+                           placeholder="smtp.gmail.com">
+                    <div class="help-text">{{ settings['smtp_server']['description'] }}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="smtp_port">SMTP Port</label>
+                    <input type="number" name="smtp_port" id="smtp_port" 
+                           value="{{ settings['smtp_port']['value'] }}" 
+                           placeholder="587">
+                    <div class="help-text">{{ settings['smtp_port']['description'] }}</div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="smtp_use_tls" id="smtp_use_tls" 
+                               {% if settings['smtp_use_tls']['value'] == 'true' %}checked{% endif %}>
+                        <label for="smtp_use_tls">Use TLS Encryption</label>
+                    </div>
+                    <div class="help-text">{{ settings['smtp_use_tls']['description'] }}</div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>🔐 Authentication</h2>
+                <div class="form-group">
+                    <label for="smtp_username">SMTP Username</label>
+                    <input type="email" name="smtp_username" id="smtp_username" 
+                           value="{{ settings['smtp_username']['value'] }}" 
+                           placeholder="your-email@slugranch.org">
+                    <div class="help-text">{{ settings['smtp_username']['description'] }}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="smtp_password">SMTP Password</label>
+                    <input type="password" name="smtp_password" id="smtp_password" 
+                           value="{{ settings['smtp_password']['value'] }}" 
+                           placeholder="App password or email password">
+                    <div class="help-text">{{ settings['smtp_password']['description'] }}</div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>✉️ Email Appearance</h2>
+                <div class="form-group">
+                    <label for="email_from_name">From Name</label>
+                    <input type="text" name="email_from_name" id="email_from_name" 
+                           value="{{ settings['email_from_name']['value'] }}" 
+                           placeholder="Slugranch Familybook">
+                    <div class="help-text">{{ settings['email_from_name']['description'] }}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email_from_address">From Email Address</label>
+                    <input type="email" name="email_from_address" id="email_from_address" 
+                           value="{{ settings['email_from_address']['value'] }}" 
+                           placeholder="familybook@slugranch.org">
+                    <div class="help-text">{{ settings['email_from_address']['description'] }}</div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+                <button type="button" class="btn btn-test" onclick="testEmailSettings()">📧 Test Email</button>
+                <a href="{{ url_for('admin_console') }}" class="btn btn-secondary">← Back to Admin Console</a>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        async function testEmailSettings() {
+            if (!confirm('This will send a test email using the current settings. Continue?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/test-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Test email sent successfully!');
+                } else {
+                    alert('❌ Test email failed: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error testing email:', error);
+                alert('❌ Network error occurred');
+            }
+        }
+    </script>
+</body>
+</html>
