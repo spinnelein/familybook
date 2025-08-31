@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Templates - Admin Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-links a {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .intro-text {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .intro-text h3 {
+            margin-top: 0;
+            color: #1e293b;
+            font-size: 1.3rem;
+        }
+        
+        .intro-text p {
+            margin-bottom: 0;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .templates-grid {
+            display: grid;
+            gap: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        }
+        
+        .template-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .template-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .template-header {
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .template-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 8px 0;
+        }
+        
+        .template-description {
+            color: #64748b;
+            margin: 0;
+            font-style: italic;
+        }
+        
+        .template-info {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .template-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .template-info-label {
+            font-weight: 500;
+            color: #475569;
+        }
+        
+        .template-info-value {
+            color: #64748b;
+        }
+        
+        .template-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .template-status.active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .template-status.inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .template-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            color: #92400e;
+            font-size: 0.9rem;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        
+        .alert-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #64748b;
+            margin-top: 50px;
+            padding: 60px 20px;
+        }
+        
+        .empty-state h3 {
+            color: #475569;
+            margin-bottom: 10px;
+        }
+        
+        .create-template-btn {
+            background: #10b981;
+            color: white;
+            margin-top: 20px;
+        }
+        
+        .create-template-btn:hover {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Email Templates</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('admin_console') }}">👥 Users</a>
+                <a href="{{ url_for('admin_settings') }}">⚙️ Settings</a>
+            </div>
+        </div>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li class="alert-{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="intro-text">
+            <h3>📧 Email Template Management</h3>
+            <p>Customize email templates sent for different events. Templates support variables like {{user_name}}, {{family_name}}, {{magic_link}}, etc. Click "Edit" to customize any template, or "Test" to send a sample email.</p>
+        </div>
+        
+        {% if templates %}
+            <div class="templates-grid">
+                {% for template in templates %}
+                <div class="template-card">
+                    <div class="template-header">
+                        <h3 class="template-name">{{ template['display_name'] }}</h3>
+                        <p class="template-description">{{ template['description'] or 'No description available' }}</p>
+                    </div>
+                    
+                    <div class="template-info">
+                        <div class="template-info-item">
+                            <span class="template-info-label">Template ID:</span>
+                            <span class="template-info-value">{{ template['template_name'] }}</span>
+                        </div>
+                        <div class="template-info-item">
+                            <span class="template-info-label">Status:</span>
+                            <span class="template-status {{ 'active' if template['is_active'] else 'inactive' }}">
+                                {{ 'Active' if template['is_active'] else 'Inactive' }}
+                            </span>
+                        </div>
+                        <div class="template-info-item">
+                            <span class="template-info-label">Last Updated:</span>
+                            <span class="template-info-value">{{ template['updated'] or template['created'] }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="template-actions">
+                        <a href="{{ url_for('edit_email_template', template_id=template['id']) }}" class="btn btn-primary">
+                            ✏️ Edit Template
+                        </a>
+                        <button onclick="testTemplate({{ template['id'] }}, '{{ template['display_name'] }}')" class="btn btn-secondary">
+                            📧 Send Test Email
+                        </button>
+                    </div>
+                    <div id="loading-{{ template['id'] }}" class="loading">Sending test email...</div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No Email Templates Found</h3>
+                <p>No email templates have been created yet. Default templates will be created automatically when needed.</p>
+                <button onclick="createDefaultTemplates()" class="btn create-template-btn">
+                    ➕ Create Default Templates
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function testTemplate(templateId, templateName) {
+            const loadingDiv = document.getElementById('loading-' + templateId);
+            loadingDiv.style.display = 'block';
+            
+            fetch('/admin/email-templates/test/' + templateId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingDiv.style.display = 'none';
+                if (data.success) {
+                    alert('Test email sent successfully for template: ' + templateName);
+                } else {
+                    alert('Failed to send test email: ' + data.error);
+                }
+            })
+            .catch(error => {
+                loadingDiv.style.display = 'none';
+                alert('Error sending test email: ' + error);
+            });
+        }
+        
+        function createDefaultTemplates() {
+            if (confirm('This will create default email templates. Continue?')) {
+                fetch('/admin/email-templates/create-defaults', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Default templates created successfully!');
+                        location.reload();
+                    } else {
+                        alert('Failed to create templates: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Error creating templates: ' + error);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

@@ -2,14 +2,16 @@ import os
 import sqlite3
 import uuid
 import requests
-from flask import Flask, jsonify, request, redirect, url_for, render_template, send_from_directory, flash, g, abort, session
+from flask import Flask, jsonify, request, redirect, url_for, render_template, render_template_string, send_from_directory, flash, g, abort, session
 from google_photos import get_authenticated_service, create_picker_session, poll_picker_session, get_picked_media_items
 import time
 import smtplib
 import json
+import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from authlib.integrations.flask_client import OAuth
+import email.utils
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -20,6 +22,30 @@ app.secret_key = 'your-secret-key'
 
 # OAuth setup
 oauth = OAuth(app)
+
+# Initialize OAuth when module is imported (for WSGI deployments)
+def init_oauth_on_import():
+    """Initialize OAuth when the module is imported (for WSGI)"""
+    try:
+        with app.app_context():
+            client_id = get_setting('oauth_client_id')
+            client_secret = get_setting('oauth_client_secret')
+            
+            if client_id and client_secret and not hasattr(oauth, 'google'):
+                oauth.register(
+                    name='google',
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    client_kwargs={'scope': 'openid email profile https://www.googleapis.com/auth/gmail.send'},
+                    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
+                )
+                print("OAuth client registered on module import")
+    except Exception as e:
+        # Silently fail during import - OAuth will be set up later if needed
+        pass
+
+# Call the initialization
+init_oauth_on_import()
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
@@ -202,6 +228,36 @@ def init_db():
             updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         
+        # Add email templates table
+        db.execute('''CREATE TABLE IF NOT EXISTS email_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            template_name TEXT UNIQUE NOT NULL,
+            display_name TEXT NOT NULL,
+            description TEXT,
+            subject_template TEXT NOT NULL,
+            html_template TEXT NOT NULL,
+            plain_template TEXT NOT NULL,
+            variables TEXT,
+            is_active INTEGER DEFAULT 1,
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Add user notification preferences table for granular control
+        db.execute('''CREATE TABLE IF NOT EXISTS user_notification_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            account_created INTEGER DEFAULT 1,
+            new_post INTEGER DEFAULT 1,
+            major_event INTEGER DEFAULT 1,
+            comment_reply INTEGER DEFAULT 1,
+            magic_link_reminder INTEGER DEFAULT 1,
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id)
+        )''')
+        
         # Insert default SMTP settings if they don't exist
         default_settings = [
             ('smtp_server', '', 'SMTP server hostname (e.g., smtp.gmail.com)'),
@@ -212,6 +268,7 @@ def init_db():
             ('email_from_name', 'Slugranch Familybook', 'Display name for sent emails'),
             ('email_from_address', '', 'From email address'),
             ('notifications_enabled', 'false', 'Enable email notifications (true/false)'),
+            ('family_name', 'Slugranch', 'Family name used in email templates'),
             ('oauth_client_id', '', 'Google OAuth Client ID'),
             ('oauth_client_secret', '', 'Google OAuth Client Secret'),
             ('oauth_redirect_uri', '', 'OAuth redirect URI (e.g., http://localhost:5000/admin/oauth/callback)')
@@ -222,6 +279,157 @@ def init_db():
             if not existing:
                 db.execute('INSERT INTO settings (key, value, description) VALUES (?, ?, ?)',
                           (key, default_value, description))
+        
+        # Insert default email templates if they don't exist
+        default_templates = [
+            ('account_created', 'Welcome to Familybook', 'Welcome email sent when a new user account is created',
+             'Welcome to {{family_name}} Familybook!',
+             '''<html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center; color: white;">
+                    <h1 style="margin: 0;">🏠 {{family_name}} Familybook</h1>
+                    <p style="margin: 5px 0 0 0;">Welcome to the Family!</p>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <h2 style="color: #333; margin-top: 0;">Hi {{user_name}}!</h2>
+                    <p>Welcome to our family photo and story sharing site! You can now view and interact with family posts.</p>
+                    <p><strong>Your personal magic link to access posts:</strong></p>
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center;">
+                        <a href="{{magic_link}}" style="color: #3b82f6; text-decoration: none; font-weight: bold; padding: 10px 20px; background: #eff6ff; border-radius: 6px; display: inline-block;">🔗 Access Family Posts</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">Bookmark this link - it's your personal gateway to stay connected with the family!</p>
+                </div></body></html>''',
+             '''{{family_name}} Familybook - Welcome!
+
+Hi {{user_name}}!
+
+Welcome to our family photo and story sharing site! You can now view and interact with family posts.
+
+Your personal magic link to access posts:
+{{magic_link}}
+
+Bookmark this link - it's your personal gateway to stay connected with the family!''',
+             'user_name,family_name,magic_link'),
+            
+            ('new_post', 'New Family Post', 'Notification sent when a new post is created',
+             'New Post: {{post_title}}',
+             '''<html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center; color: white;">
+                    <h1 style="margin: 0;">🏠 {{family_name}} Familybook</h1>
+                    <p style="margin: 5px 0 0 0;">New Post</p>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <h2 style="color: #333; margin-top: 0;">{{post_title}}</h2>
+                    {{#post_author}}<p style="color: #666; font-style: italic;">By {{post_author}}</p>{{/post_author}}
+                    {{#post_tags}}<p style="color: #666; font-style: italic;">Tagged: {{post_tags}}</p>{{/post_tags}}
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        {{post_content}}
+                    </div>
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="{{magic_link}}" style="color: white; background: #3b82f6; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">📖 Read Full Post</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px; text-align: center; margin-top: 20px;">
+                        Visit the familybook to see the full post and join the conversation!<br>
+                        Your magic link: {{magic_link}}
+                    </p>
+                </div></body></html>''',
+             '''{{family_name}} Familybook - New Post
+
+{{post_title}}
+{{#post_author}}By {{post_author}}{{/post_author}}
+{{#post_tags}}Tagged: {{post_tags}}{{/post_tags}}
+
+{{post_content}}
+
+Visit the familybook to see the full post and join the conversation!
+Your magic link: {{magic_link}}''',
+             'user_name,family_name,magic_link,post_title,post_author,post_content,post_tags'),
+            
+            ('major_event', 'Major Family Update', 'Notification for major events or important family news',
+             '🚨 Major Update: {{post_title}}',
+             '''<html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 20px; text-align: center; color: white;">
+                    <h1 style="margin: 0;">🏠 {{family_name}} Familybook</h1>
+                    <p style="margin: 5px 0 0 0;">🚨 Major Family Update</p>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <h2 style="color: #333; margin-top: 0;">{{post_title}}</h2>
+                    {{#post_author}}<p style="color: #666; font-style: italic;">By {{post_author}}</p>{{/post_author}}
+                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 0; color: #92400e; font-weight: bold;">This is marked as a major family update that everyone should see!</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        {{post_content}}
+                    </div>
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="{{magic_link}}" style="color: white; background: #f59e0b; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">📖 Read Full Post</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px; text-align: center; margin-top: 20px;">
+                        Your magic link: {{magic_link}}
+                    </p>
+                </div></body></html>''',
+             '''{{family_name}} Familybook - Major Update
+
+🚨 MAJOR FAMILY UPDATE
+
+{{post_title}}
+{{#post_author}}By {{post_author}}{{/post_author}}
+
+This is marked as a major family update that everyone should see!
+
+{{post_content}}
+
+Visit the familybook to see the full post and join the conversation!
+Your magic link: {{magic_link}}''',
+             'user_name,family_name,magic_link,post_title,post_author,post_content,post_tags'),
+            
+            ('comment_reply', 'Reply to Your Comment', 'Notification when someone replies to your comment',
+             'Reply to your comment on "{{post_title}}"',
+             '''<html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; text-align: center; color: white;">
+                    <h1 style="margin: 0;">🏠 {{family_name}} Familybook</h1>
+                    <p style="margin: 5px 0 0 0;">💬 New Reply</p>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <h2 style="color: #333; margin-top: 0;">Someone replied to your comment!</h2>
+                    <p>On the post: <strong>{{post_title}}</strong></p>
+                    <div style="background: #f0f0f0; border-left: 4px solid #10b981; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 0 0 10px 0; color: #666; font-size: 12px;"><strong>Your comment:</strong></p>
+                        <p style="margin: 0;">{{original_comment}}</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 0 0 10px 0; color: #666; font-size: 12px;"><strong>{{reply_author}} replied:</strong></p>
+                        <p style="margin: 0;">{{reply_content}}</p>
+                    </div>
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="{{magic_link}}" style="color: white; background: #10b981; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">💬 View Conversation</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px; text-align: center; margin-top: 20px;">
+                        Your magic link: {{magic_link}}
+                    </p>
+                </div></body></html>''',
+             '''{{family_name}} Familybook - New Reply
+
+Someone replied to your comment!
+
+On the post: {{post_title}}
+
+Your comment:
+{{original_comment}}
+
+{{reply_author}} replied:
+{{reply_content}}
+
+View the conversation: {{magic_link}}''',
+             'user_name,family_name,magic_link,post_title,original_comment,reply_author,reply_content')
+        ]
+        
+        for template_name, display_name, description, subject, html, plain, variables in default_templates:
+            existing = db.execute('SELECT id FROM email_templates WHERE template_name = ?', (template_name,)).fetchone()
+            if not existing:
+                db.execute('''INSERT INTO email_templates 
+                             (template_name, display_name, description, subject_template, html_template, plain_template, variables) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                          (template_name, display_name, description, subject, html, plain, variables))
         
         # Add filter_tags table for tag management
         db.execute('''CREATE TABLE IF NOT EXISTS filter_tags (
@@ -254,22 +462,40 @@ def init_db():
 def setup_oauth():
     """Configure OAuth client with database settings"""
     try:
+        # Check if already registered to avoid duplicate registration
+        if hasattr(oauth, 'google'):
+            print("OAuth client already registered")
+            return True
+            
         client_id = get_setting('oauth_client_id')
         client_secret = get_setting('oauth_client_secret') 
         redirect_uri = get_setting('oauth_redirect_uri')
         
+        print(f"OAuth setup - Client ID: {client_id[:20]}..." if client_id else "OAuth setup - Client ID: None")
+        print(f"OAuth setup - Client Secret: {'Set' if client_secret else 'None'}")
+        print(f"OAuth setup - Redirect URI: {redirect_uri}")
+        
         if client_id and client_secret:
+            print("Registering OAuth client...")
             oauth.register(
                 name='google',
                 client_id=client_id,
                 client_secret=client_secret,
                 client_kwargs={
-                    'scope': 'openid email profile'
+                    'scope': 'openid email profile https://www.googleapis.com/auth/gmail.send'
                 },
-                server_metadata_url='https://accounts.google.com/.well-known/openid_configuration'
+                server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
             )
+            print("OAuth client registered successfully")
+            return True
+        else:
+            print(f"OAuth setup failed - Missing credentials: client_id={bool(client_id)}, client_secret={bool(client_secret)}")
+            return False
     except Exception as e:
         print(f"OAuth setup error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def get_setting(key, default=None):
     """Get a setting value from the database"""
@@ -296,6 +522,12 @@ def requires_admin_auth():
     if not is_oauth_configured():
         return False  # Open access when OAuth not configured
     return 'admin_user_id' not in session
+
+def redirect_to_admin_login():
+    """Helper function to redirect to admin login while preserving subpath"""
+    from flask import request
+    script_name = request.environ.get('SCRIPT_NAME', '')
+    return redirect(f'{script_name}/admin/login')
 
 def cleanup_orphaned_media():
     """Remove uploaded media files that aren't referenced in any posts"""
@@ -376,13 +608,126 @@ def cleanup_orphaned_media():
         print(f"Error during media cleanup: {str(e)}")
         return 0
 
-def send_email_notifications(post_id, title, content, tags):
-    """Send email notifications for new posts based on user preferences"""
+def get_admin_oauth_token():
+    """Get OAuth token for the currently logged-in admin user"""
+    admin_user_id = session.get('admin_user_id')
+    if not admin_user_id:
+        return None
+    
+    # For now, we'll need to store OAuth tokens in the database
+    # This is a simplified approach - in production you'd want better token management
+    db = get_db()
+    admin_user = db.execute('SELECT * FROM users WHERE id = ? AND is_admin = 1', (admin_user_id,)).fetchone()
+    
+    if admin_user:
+        # Return the email of the logged-in admin for now
+        # In a full implementation, you'd store and refresh OAuth tokens
+        return admin_user['email']
+    return None
+
+def send_gmail_oauth_email(to_email, subject, html_body, plain_body):
+    """Send email using Gmail API with OAuth2 authentication"""
     try:
-        # Check if notifications are enabled
-        if get_setting('notifications_enabled', 'false').lower() != 'true':
-            return
+        # This would require storing OAuth tokens and using Gmail API
+        # For now, let's implement a hybrid approach using SMTP with OAuth2
         
+        admin_email = get_admin_oauth_token()
+        if not admin_email:
+            print("No admin OAuth token available for email sending")
+            return False
+            
+        # Use Gmail SMTP with XOAUTH2 (requires implementing XOAUTH2 auth)
+        # For now, let's fall back to the traditional method but with proper error handling
+        return send_traditional_smtp_email(to_email, subject, html_body, plain_body)
+        
+    except Exception as e:
+        print(f"OAuth2 Gmail API email failed: {e}")
+        return False
+
+def render_email_template(template_name, **context):
+    """Render an email template with the given context"""
+    try:
+        db = get_db()
+        template = db.execute('''SELECT * FROM email_templates 
+                                WHERE template_name = ? AND is_active = 1''', 
+                             (template_name,)).fetchone()
+        
+        if not template:
+            print(f"No active template found for: {template_name}")
+            return None, None, None
+        
+        # Add common context variables
+        context['family_name'] = get_setting('family_name', 'Familybook')
+        
+        # Render templates
+        subject = render_template_string(template['subject_template'], **context)
+        html_body = render_template_string(template['html_template'], **context)
+        plain_body = render_template_string(template['plain_template'], **context)
+        
+        return subject, html_body, plain_body
+    
+    except Exception as e:
+        print(f"Error rendering email template '{template_name}': {e}")
+        return None, None, None
+
+def send_templated_email(template_name, to_email, **context):
+    """Send an email using a template"""
+    try:
+        subject, html_body, plain_body = render_email_template(template_name, **context)
+        
+        if not subject:
+            print(f"Failed to render template '{template_name}'")
+            return False
+        
+        return send_traditional_smtp_email(to_email, subject, html_body, plain_body)
+    
+    except Exception as e:
+        print(f"Error sending templated email '{template_name}' to {to_email}: {e}")
+        return False
+
+def send_notification_email(template_name, user_id, **context):
+    """Send a notification email to a user based on their preferences"""
+    try:
+        db = get_db()
+        
+        # Get user info
+        user = db.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not user or not user['email']:
+            return False
+        
+        # Get user's notification preferences
+        prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
+                          (user_id,)).fetchone()
+        
+        # Check if user wants this type of notification
+        if prefs:
+            notification_enabled = False
+            if template_name == 'account_created' and prefs['account_created']:
+                notification_enabled = True
+            elif template_name == 'new_post' and prefs['new_post']:
+                notification_enabled = True
+            elif template_name == 'major_event' and prefs['major_event']:
+                notification_enabled = True
+            elif template_name == 'comment_reply' and prefs['comment_reply']:
+                notification_enabled = True
+            
+            if not notification_enabled:
+                print(f"User {user['email']} has disabled '{template_name}' notifications")
+                return False
+        
+        # Add user context
+        context['user_name'] = user['name']
+        context['magic_link'] = url_for('posts', magic_token=user['magic_token'], _external=True)
+        
+        return send_templated_email(template_name, user['email'], **context)
+    
+    except Exception as e:
+        print(f"Error sending notification email to user {user_id}: {e}")
+        return False
+
+def send_traditional_smtp_email(to_email, subject, html_body, plain_body):
+    """Send email using traditional SMTP (fallback method)"""
+    try:
         # Get SMTP settings
         smtp_server = get_setting('smtp_server', '')
         smtp_port = int(get_setting('smtp_port', '587'))
@@ -392,105 +737,46 @@ def send_email_notifications(post_id, title, content, tags):
         email_from_name = get_setting('email_from_name', 'Slugranch Familybook')
         email_from_address = get_setting('email_from_address', '')
         
-        # Validate required settings
-        if not all([smtp_server, smtp_username, smtp_password, email_from_address]):
-            print("Email notifications skipped: Missing SMTP configuration")
-            return
+        # Validate required settings (username/password optional for local servers)
+        if not all([smtp_server, email_from_address]):
+            print("Email sending skipped: Missing SMTP server or from address")
+            return False
         
-        # Check if post is tagged as "major"
-        is_major = tags and 'major' in tags.lower()
+        # Create email
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{email_from_name} <{email_from_address}>"
+        msg['To'] = to_email
+        msg['Date'] = email.utils.formatdate()
         
-        # Get users who should receive notifications
-        db = get_db()
-        if is_major:
-            # Send to all users who want "all" or "major" notifications
-            recipients = db.execute('''
-                SELECT name, email FROM users 
-                WHERE email_notifications IN ("all", "major") 
-                AND email != ""
-            ''').fetchall()
-        else:
-            # Send only to users who want "all" notifications
-            recipients = db.execute('''
-                SELECT name, email FROM users 
-                WHERE email_notifications = "all" 
-                AND email != ""
-            ''').fetchall()
+        # Add both plain text and HTML versions
+        msg.attach(MIMEText(plain_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
         
-        if not recipients:
-            print("No recipients for email notifications")
-            return
-        
-        # Create email content
-        subject = f"New {'Major ' if is_major else ''}Post: {title}"
-        
-        # Create HTML email body
-        html_body = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center; color: white;">
-                <h1 style="margin: 0;">🏠 Slugranch Familybook</h1>
-                <p style="margin: 5px 0 0 0;">New {'Major ' if is_major else ''}Post</p>
-            </div>
-            <div style="padding: 20px; background: #f9f9f9;">
-                <h2 style="color: #333; margin-top: 0;">{title}</h2>
-                {f'<p style="color: #666; font-style: italic;">Tagged: {tags}</p>' if tags else ''}
-                <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                    {content}
-                </div>
-                <p style="color: #666; font-size: 14px; text-align: center; margin-top: 30px;">
-                    Visit the familybook to see the full post and join the conversation!
-                </p>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Create plain text version
-        # Clean content for plain text email
-        clean_content = content.replace('<br>', '\n').replace('</p><p>', '\n\n')
-        major_text = 'Major ' if is_major else ''
-        tags_text = f'Tagged: {tags}' if tags else ''
-        
-        plain_body = f"""
-Slugranch Familybook - New {major_text}Post
-
-{title}
-{tags_text}
-
-{clean_content}
-
-Visit the familybook to see the full post and join the conversation!
-        """
-        
-        # Send emails
+        # Send email
         server = smtplib.SMTP(smtp_server, smtp_port)
         if smtp_use_tls:
             server.starttls()
-        server.login(smtp_username, smtp_password)
         
-        for recipient in recipients:
-            try:
-                msg = MIMEMultipart('alternative')
-                msg['Subject'] = subject
-                msg['From'] = f"{email_from_name} <{email_from_address}>"
-                msg['To'] = recipient['email']
-                
-                # Add both plain text and HTML versions
-                msg.attach(MIMEText(plain_body, 'plain'))
-                msg.attach(MIMEText(html_body, 'html'))
-                
-                server.send_message(msg)
-                print(f"Email sent to {recipient['email']}")
-                
-            except Exception as e:
-                print(f"Failed to send email to {recipient['email']}: {str(e)}")
+        # Only authenticate if username and password are provided
+        if smtp_username and smtp_password:
+            server.login(smtp_username, smtp_password)
         
+        server.send_message(msg)
         server.quit()
-        print(f"Email notifications sent to {len(recipients)} recipients")
+        
+        print(f"Email sent successfully to {to_email}")
+        return True
         
     except Exception as e:
-        print(f"Email notification error: {str(e)}")
+        print(f"SMTP email sending failed: {e}")
+        return False
+
+# Legacy email notification function - replaced by templated system
+# This function is kept for backward compatibility but should no longer be used
+def send_email_notifications(post_id, title, content, tags):
+    """DEPRECATED: Use send_notification_email with templates instead"""
+    print("Warning: send_email_notifications is deprecated. Use templated email system instead.")
 
 @app.route('/')
 def home():
@@ -540,8 +826,27 @@ def create_post(magic_token=None):
         post_id = cursor.lastrowid
         db.commit()
         
-        # Send email notifications if enabled
-        send_email_notifications(post_id, title, content, tags)
+        # Send email notifications using templates
+        if get_setting('notifications_enabled', 'false').lower() == 'true':
+            # Determine if this is a major event
+            is_major = tags and 'major' in tags.lower()
+            template_name = 'major_event' if is_major else 'new_post'
+            
+            # Get all users who should receive notifications
+            db = get_db()
+            users = db.execute('SELECT id FROM users WHERE email != ""').fetchall()
+            
+            # Send notifications to each user based on their preferences
+            for user_row in users:
+                try:
+                    send_notification_email(template_name, user_row['id'], 
+                                          post_title=title,
+                                          post_author=user['name'] if user else 'Unknown',
+                                          post_content=content[:500] + ('...' if len(content) > 500 else ''),
+                                          post_tags=tags)
+                except Exception as e:
+                    print(f"Failed to send notification to user {user_row['id']}: {e}")
+                    continue
         
         # Clean up orphaned media files
         cleanup_orphaned_media()
@@ -773,9 +1078,34 @@ def admin_setup():
 # OAuth login route
 @app.route('/admin/oauth/login')
 def oauth_login():
-    setup_oauth()  # Configure OAuth with current settings
-    if 'google' not in oauth.__dict__ or not hasattr(oauth, 'google'):
-        flash('OAuth not configured. Please set up OAuth credentials in settings.', 'danger')
+    # Try to setup OAuth, with retry logic
+    max_retries = 3
+    for attempt in range(max_retries):
+        print(f"OAuth setup attempt {attempt + 1}/{max_retries}")
+        success = setup_oauth()  # Configure OAuth with current settings
+        
+        if hasattr(oauth, 'google'):
+            print("OAuth client verified - proceeding with login")
+            break
+            
+        if attempt < max_retries - 1:
+            print("OAuth setup failed, retrying...")
+            # Clear any partial registration
+            if hasattr(oauth, '_clients') and 'google' in oauth._clients:
+                del oauth._clients['google']
+            if hasattr(oauth, '_registry') and 'google' in oauth._registry:
+                del oauth._registry['google']
+    
+    if not hasattr(oauth, 'google'):
+        # Better error message with debugging info
+        client_id = get_setting('oauth_client_id')
+        client_secret = get_setting('oauth_client_secret')
+        print(f"Final OAuth state check failed after {max_retries} attempts")
+        print(f"OAuth _clients: {getattr(oauth, '_clients', {})}")
+        print(f"OAuth _registry: {getattr(oauth, '_registry', {})}")
+        error_msg = f"OAuth registration failed. Debug: client_id={'set' if client_id else 'missing'}, client_secret={'set' if client_secret else 'missing'}"
+        print(error_msg)
+        flash(error_msg, 'danger')
         return redirect(url_for('admin_login'))
     
     redirect_uri = get_setting('oauth_redirect_uri', url_for('oauth_callback', _external=True))
@@ -785,7 +1115,7 @@ def oauth_login():
 @app.route('/admin/oauth/callback')
 def oauth_callback():
     setup_oauth()
-    if 'google' not in oauth.__dict__ or not hasattr(oauth, 'google'):
+    if not hasattr(oauth, 'google'):
         flash('OAuth not configured.', 'danger')
         return redirect(url_for('admin_login'))
     
@@ -830,14 +1160,14 @@ def admin_logout():
     session.pop('admin_user_email', None) 
     session.pop('admin_user_name', None)
     flash('Logged out successfully.', 'success')
-    return redirect(url_for('admin_login'))
+    return redirect_to_admin_login()
 
 # Admin console page (protected only when OAuth is configured)
 @app.route('/admin/console', methods=['GET', 'POST'])
 def admin_console():
     # Check if admin authentication is required
     if requires_admin_auth():
-        return redirect(url_for('admin_login'))
+        return redirect_to_admin_login()
     
     db = get_db()
     if request.method == 'POST':
@@ -846,9 +1176,19 @@ def admin_console():
         email_notifications = request.form.get('email_notifications', 'all')
         magic_token = uuid.uuid4().hex
         try:
-            db.execute('INSERT INTO users (name, email, magic_token, email_notifications) VALUES (?, ?, ?, ?)', 
-                      (name, email, magic_token, email_notifications))
+            cursor = db.execute('INSERT INTO users (name, email, magic_token, email_notifications) VALUES (?, ?, ?, ?)', 
+                               (name, email, magic_token, email_notifications))
+            user_id = cursor.lastrowid
             db.commit()
+            
+            # Send welcome email if notifications are enabled
+            if get_setting('notifications_enabled', 'false').lower() == 'true':
+                try:
+                    send_notification_email('account_created', user_id)
+                    print(f"Welcome email sent to {email}")
+                except Exception as e:
+                    print(f"Failed to send welcome email to {email}: {e}")
+            
             flash('User added!', 'success')
         except sqlite3.IntegrityError:
             flash('Email already exists!', 'danger')
@@ -864,7 +1204,7 @@ def admin_console():
 def remove_user(user_id):
     # Check if admin authentication is required
     if requires_admin_auth():
-        return redirect(url_for('admin_login'))
+        return redirect_to_admin_login()
     
     db = get_db()
     db.execute('DELETE FROM users WHERE id = ?', (user_id,))
@@ -875,24 +1215,29 @@ def remove_user(user_id):
 # Toggle admin status
 @app.route('/admin/users/toggle-admin/<int:user_id>', methods=['POST'])
 def toggle_admin_status(user_id):
-    # Check if admin authentication is required
-    if requires_admin_auth():
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    db = get_db()
-    user = db.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    new_admin_status = 1 if not user['is_admin'] else 0
-    db.execute('UPDATE users SET is_admin = ? WHERE id = ?', (new_admin_status, user_id))
-    db.commit()
-    
-    return jsonify({
-        'success': True,
-        'is_admin': bool(new_admin_status),
-        'user_name': user['name']
-    })
+    try:
+        # Check if admin authentication is required
+        if requires_admin_auth():
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        new_admin_status = 1 if not user['is_admin'] else 0
+        db.execute('UPDATE users SET is_admin = ? WHERE id = ?', (new_admin_status, user_id))
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'is_admin': bool(new_admin_status),
+            'user_name': user['name']
+        })
+        
+    except Exception as e:
+        print(f"Error in toggle_admin_status: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Update user email notification preferences
 @app.route('/admin/users/update-notifications/<int:user_id>', methods=['POST'])
@@ -914,7 +1259,7 @@ def update_user_notifications(user_id):
 def add_filter_tag():
     # Check if admin authentication is required
     if requires_admin_auth():
-        return redirect(url_for('admin_login'))
+        return redirect_to_admin_login()
     
     db = get_db()
     name = request.form.get('name', '').strip().lower()
@@ -940,7 +1285,7 @@ def add_filter_tag():
 def remove_filter_tag(tag_id):
     # Check if admin authentication is required
     if requires_admin_auth():
-        return redirect(url_for('admin_login'))
+        return redirect_to_admin_login()
     
     db = get_db()
     db.execute('DELETE FROM filter_tags WHERE id = ?', (tag_id,))
@@ -953,7 +1298,7 @@ def remove_filter_tag(tag_id):
 def admin_settings():
     # Check if admin authentication is required
     if requires_admin_auth():
-        return redirect(url_for('admin_login'))
+        return redirect_to_admin_login()
     
     db = get_db()
     
@@ -990,6 +1335,331 @@ def admin_settings():
     
     return render_template('admin_settings.html', settings=settings)
 
+# Email Templates Management
+@app.route('/admin/email-templates')
+def admin_email_templates():
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return redirect_to_admin_login()
+    
+    db = get_db()
+    templates = db.execute('SELECT * FROM email_templates ORDER BY template_name').fetchall()
+    return render_template('admin_email_templates.html', templates=templates)
+
+@app.route('/admin/email-templates/edit/<int:template_id>', methods=['GET', 'POST'])
+def edit_email_template(template_id):
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return redirect_to_admin_login()
+    
+    db = get_db()
+    
+    if request.method == 'POST':
+        # Update template
+        display_name = request.form['display_name']
+        description = request.form.get('description', '')
+        subject_template = request.form['subject_template']
+        html_template = request.form['html_template']
+        plain_template = request.form['plain_template']
+        variables = request.form.get('variables', '')
+        is_active = 1 if request.form.get('is_active') else 0
+        
+        db.execute('''UPDATE email_templates 
+                     SET display_name = ?, description = ?, subject_template = ?, 
+                         html_template = ?, plain_template = ?, variables = ?, 
+                         is_active = ?, updated = CURRENT_TIMESTAMP 
+                     WHERE id = ?''',
+                  (display_name, description, subject_template, html_template, 
+                   plain_template, variables, is_active, template_id))
+        db.commit()
+        
+        flash('Email template updated successfully!', 'success')
+        return redirect(url_for('admin_email_templates'))
+    
+    # Get template for editing
+    template = db.execute('SELECT * FROM email_templates WHERE id = ?', (template_id,)).fetchone()
+    if not template:
+        abort(404)
+    
+    return render_template('admin_email_template_edit.html', template=template)
+
+@app.route('/admin/email-templates/test/<int:template_id>', methods=['POST'])
+def test_email_template(template_id):
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        db = get_db()
+        template = db.execute('SELECT * FROM email_templates WHERE id = ?', (template_id,)).fetchone()
+        
+        if not template:
+            return jsonify({'success': False, 'error': 'Template not found'})
+        
+        # Get test email address
+        test_email = None
+        if 'admin_user_email' in session:
+            test_email = session['admin_user_email']
+        else:
+            test_email = 'root@localhost'
+        
+        if not test_email:
+            return jsonify({'success': False, 'error': 'No test email address available'})
+        
+        # Render template with sample data
+        sample_data = {
+            'user_name': 'Test User',
+            'family_name': get_setting('family_name', 'Familybook'),
+            'magic_link': url_for('posts', magic_token='sample-token', _external=True),
+            'post_title': 'Sample Post Title',
+            'post_author': 'Sample Author',
+            'post_content': 'This is sample post content for testing the email template.',
+            'post_tags': 'photos, test',
+            'original_comment': 'This is a sample comment',
+            'reply_author': 'Reply Author',
+            'reply_content': 'This is a sample reply to test the template.'
+        }
+        
+        rendered_subject = render_template_string(template['subject_template'], **sample_data)
+        rendered_html = render_template_string(template['html_template'], **sample_data)
+        rendered_plain = render_template_string(template['plain_template'], **sample_data)
+        
+        # Send test email
+        success = send_traditional_smtp_email(
+            test_email,
+            f"[TEST] {rendered_subject}",
+            rendered_html,
+            rendered_plain
+        )
+        
+        if success:
+            return jsonify({'success': True, 'message': f'Test email sent to {test_email}'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to send test email'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/admin/email-templates/create-defaults', methods=['POST'])
+def create_default_email_templates():
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        db = get_db()
+        
+        # Define default templates
+        default_templates = [
+            {
+                'template_name': 'user_invitation',
+                'display_name': 'User Invitation',
+                'description': 'Sent when a new user is invited to the family book',
+                'subject_template': 'Welcome to {{family_name}}!',
+                'html_template': '''
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; color: white; text-align: center;">
+        <h1 style="margin: 0;">Welcome to {{family_name}}!</h1>
+    </div>
+    <div style="padding: 30px; background: #f8f9fa; border-radius: 0 0 10px 10px;">
+        <p>Hi {{user_name}},</p>
+        <p>You've been invited to join the {{family_name}} family photo book! This is a private space where we share memories, photos, and stay connected.</p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{magic_link}}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">View Family Posts</a>
+        </div>
+        <p>Bookmark the link above to easily access all our family updates!</p>
+        <p style="color: #666; font-size: 14px;">This is your personal access link. Please don't share it with others.</p>
+    </div>
+</body>
+</html>
+                ''',
+                'plain_template': '''Hi {{user_name}},
+
+You've been invited to join the {{family_name}} family photo book!
+
+Visit: {{magic_link}}
+
+Bookmark this link to easily access all our family updates.
+
+This is your personal access link. Please don't share it with others.
+                ''',
+                'variables': 'user_name, family_name, magic_link'
+            },
+            {
+                'template_name': 'new_post_notification',
+                'display_name': 'New Post Notification',
+                'description': 'Sent when a new post is added to notify family members',
+                'subject_template': 'New post: {{post_title}} - {{family_name}}',
+                'html_template': '''
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0; color: white;">
+        <h2 style="margin: 0;">New Post in {{family_name}}</h2>
+    </div>
+    <div style="padding: 30px; background: #f8f9fa; border-radius: 0 0 10px 10px;">
+        <h3 style="color: #333; margin-top: 0;">{{post_title}}</h3>
+        <p style="color: #666;">Posted by {{post_author}}</p>
+        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            {{post_content}}
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{magic_link}}" style="background: #10b981; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">View Post</a>
+        </div>
+    </div>
+</body>
+</html>
+                ''',
+                'plain_template': '''New Post in {{family_name}}
+
+{{post_title}}
+Posted by {{post_author}}
+
+{{post_content}}
+
+View the full post: {{magic_link}}
+                ''',
+                'variables': 'user_name, family_name, magic_link, post_title, post_author, post_content'
+            },
+            {
+                'template_name': 'weekly_digest',
+                'display_name': 'Weekly Family Digest',
+                'description': 'Weekly summary of family activity (if implemented)',
+                'subject_template': 'Weekly Family Update - {{family_name}}',
+                'html_template': '''
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; color: white; text-align: center;">
+        <h1 style="margin: 0;">📧 Weekly Family Update</h1>
+        <p style="margin: 10px 0 0 0;">{{family_name}}</p>
+    </div>
+    <div style="padding: 30px; background: #f8f9fa; border-radius: 0 0 10px 10px;">
+        <p>Hi {{user_name}},</p>
+        <p>Here's what happened in the {{family_name}} family this week:</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #333; margin-top: 0;">📱 This Week's Activity</h3>
+            <p>{{weekly_summary}}</p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{magic_link}}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">View All Posts</a>
+        </div>
+        
+        <p style="color: #666; font-size: 14px; text-align: center;">You can update your notification preferences anytime.</p>
+    </div>
+</body>
+</html>
+                ''',
+                'plain_template': '''Weekly Family Update - {{family_name}}
+
+Hi {{user_name}},
+
+Here's what happened in the {{family_name}} family this week:
+
+{{weekly_summary}}
+
+View all posts: {{magic_link}}
+
+You can update your notification preferences anytime.
+                ''',
+                'variables': 'user_name, family_name, magic_link, weekly_summary'
+            }
+        ]
+        
+        # Insert templates
+        created_count = 0
+        for template in default_templates:
+            # Check if template already exists
+            existing = db.execute('SELECT id FROM email_templates WHERE template_name = ?', 
+                                (template['template_name'],)).fetchone()
+            
+            if not existing:
+                db.execute('''INSERT INTO email_templates 
+                    (template_name, display_name, description, subject_template, 
+                     html_template, plain_template, variables, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1)''',
+                    (template['template_name'], template['display_name'], 
+                     template['description'], template['subject_template'],
+                     template['html_template'], template['plain_template'], 
+                     template['variables']))
+                created_count += 1
+        
+        db.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Created {created_count} default email templates',
+            'created_count': created_count
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# User Notification Preferences
+@app.route('/user-settings/<magic_token>')
+def user_settings(magic_token):
+    db = get_db()
+    user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+    if not user:
+        abort(403)
+    
+    # Get user's notification preferences
+    prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
+                      (user['id'],)).fetchone()
+    
+    # If no preferences exist, create default ones
+    if not prefs:
+        db.execute('''INSERT INTO user_notification_preferences 
+                     (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder) 
+                     VALUES (?, 1, 1, 1, 1, 1)''', (user['id'],))
+        db.commit()
+        prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
+                          (user['id'],)).fetchone()
+    
+    return render_template('user_settings.html', user=user, prefs=prefs)
+
+@app.route('/user-settings/<magic_token>/update', methods=['POST'])
+def update_user_settings(magic_token):
+    db = get_db()
+    user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+    if not user:
+        abort(403)
+    
+    # Update notification preferences
+    account_created = 1 if request.form.get('account_created') else 0
+    new_post = 1 if request.form.get('new_post') else 0
+    major_event = 1 if request.form.get('major_event') else 0
+    comment_reply = 1 if request.form.get('comment_reply') else 0
+    magic_link_reminder = 1 if request.form.get('magic_link_reminder') else 0
+    
+    # Update or insert preferences
+    existing = db.execute('SELECT id FROM user_notification_preferences WHERE user_id = ?', 
+                         (user['id'],)).fetchone()
+    
+    if existing:
+        db.execute('''UPDATE user_notification_preferences 
+                     SET account_created = ?, new_post = ?, major_event = ?, 
+                         comment_reply = ?, magic_link_reminder = ?, updated = CURRENT_TIMESTAMP
+                     WHERE user_id = ?''',
+                  (account_created, new_post, major_event, comment_reply, 
+                   magic_link_reminder, user['id']))
+    else:
+        db.execute('''INSERT INTO user_notification_preferences 
+                     (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder) 
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                  (user['id'], account_created, new_post, major_event, comment_reply, magic_link_reminder))
+    
+    db.commit()
+    flash('Your notification preferences have been updated!', 'success')
+    return redirect(url_for('user_settings', magic_token=magic_token))
+
 # Test email functionality
 @app.route('/admin/test-email', methods=['POST'])
 def test_email():
@@ -998,24 +1668,19 @@ def test_email():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        # Get SMTP settings
-        smtp_server = get_setting('smtp_server', '')
-        smtp_port = int(get_setting('smtp_port', '587'))
-        smtp_username = get_setting('smtp_username', '')
-        smtp_password = get_setting('smtp_password', '')
-        smtp_use_tls = get_setting('smtp_use_tls', 'true').lower() == 'true'
+        # Get test recipient email - try admin user or use local root
+        test_email = None
+        if 'admin_user_email' in session:
+            test_email = session['admin_user_email']
+        else:
+            # Use local root user for testing local Postfix
+            test_email = 'root@localhost'
+        
+        if not test_email:
+            return jsonify({'success': False, 'error': 'No test email address available'})
+        
+        # Get email settings for display names
         email_from_name = get_setting('email_from_name', 'Slugranch Familybook')
-        email_from_address = get_setting('email_from_address', '')
-        
-        # Validate required settings
-        if not all([smtp_server, smtp_username, smtp_password, email_from_address]):
-            return jsonify({'success': False, 'error': 'Missing SMTP configuration'})
-        
-        # Create test email
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = 'Test Email from Slugranch Familybook'
-        msg['From'] = f"{email_from_name} <{email_from_address}>"
-        msg['To'] = smtp_username  # Send to self
         
         html_body = """
         <html>
@@ -1045,19 +1710,18 @@ This is a test email to verify your SMTP configuration is working correctly.
 If you received this email, your notification system is ready to go!
         """
         
-        # Send test email
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        if smtp_use_tls:
-            server.starttls()
-        server.login(smtp_username, smtp_password)
+        # Send test email using local SMTP
+        success = send_traditional_smtp_email(
+            test_email,
+            'Test Email from Slugranch Familybook',
+            html_body,
+            plain_body
+        )
         
-        msg.attach(MIMEText(plain_body, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
-        
-        server.send_message(msg)
-        server.quit()
-        
-        return jsonify({'success': True})
+        if success:
+            return jsonify({'success': True, 'message': f'Test email sent to {test_email}'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to send test email'})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -1282,6 +1946,28 @@ def add_comment(magic_token):
     db.execute('INSERT INTO comments (post_id, user_id, content, parent_comment_id) VALUES (?, ?, ?, ?)',
                (post_id, user['id'], content, parent_comment_id))
     db.commit()
+    
+    # Send reply notification email if this is a reply
+    if parent_comment_id and get_setting('notifications_enabled', 'false').lower() == 'true':
+        try:
+            # Get the parent comment and its author
+            parent_comment = db.execute('''
+                SELECT c.*, u.id as author_id, u.name as author_name, p.title as post_title
+                FROM comments c 
+                JOIN users u ON c.user_id = u.id 
+                JOIN posts p ON c.post_id = p.id
+                WHERE c.id = ?
+            ''', (parent_comment_id,)).fetchone()
+            
+            if parent_comment and parent_comment['author_id'] != user['id']:
+                # Don't send notification if replying to yourself
+                send_notification_email('comment_reply', parent_comment['author_id'],
+                                       post_title=parent_comment['post_title'],
+                                       original_comment=parent_comment['content'][:200] + ('...' if len(parent_comment['content']) > 200 else ''),
+                                       reply_author=user['name'],
+                                       reply_content=content[:200] + ('...' if len(content) > 200 else ''))
+        except Exception as e:
+            print(f"Failed to send comment reply notification: {e}")
     
     if parent_comment_id:
         flash('Reply added successfully!', 'success')
@@ -1698,4 +2384,10 @@ def test_polling():
 
 if __name__ == "__main__":
     init_db()
+    # Initialize OAuth on startup if configured
+    with app.app_context():
+        try:
+            setup_oauth()
+        except Exception as e:
+            print(f"OAuth initialization failed at startup: {e}")
     app.run(debug=True)
