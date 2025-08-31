@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Email Template - Admin Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .nav-links a {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-links a:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .form-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-section h3 {
+            margin: 0 0 20px 0;
+            color: #1e293b;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .form-row.single {
+            flex-direction: column;
+        }
+        
+        .form-field {
+            flex: 1;
+        }
+        
+        .form-field.checkbox {
+            flex: 0 0 auto;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .template-textarea {
+            min-height: 300px;
+        }
+        
+        .html-textarea {
+            min-height: 400px;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        
+        .variables-help {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            color: #92400e;
+        }
+        
+        .variables-help h4 {
+            margin: 0 0 10px 0;
+            color: #92400e;
+        }
+        
+        .variables-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .flash-messages {
+            margin-bottom: 30px;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .flash-messages .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border-left: 4px solid #22c55e;
+        }
+        
+        .flash-messages .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .flash-messages .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1> Edit Email Template</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('admin_email_templates') }}">=Á Templates</a>
+                <a href="{{ url_for('admin_console') }}">=e Users</a>
+                <a href="{{ url_for('admin_settings') }}">ô Settings</a>
+            </div>
+        </div>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li class="alert-{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <form method="POST">
+            <div class="form-section">
+                <h3>=À Template Information</h3>
+                
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="display_name">Display Name</label>
+                        <input type="text" name="display_name" id="display_name" 
+                               value="{{ template['display_name'] }}" required>
+                        <div class="help-text">Friendly name displayed in the admin interface</div>
+                    </div>
+                    <div class="form-field checkbox">
+                        <label for="is_active" class="checkbox-label">
+                            <input type="checkbox" name="is_active" id="is_active" 
+                                   {% if template['is_active'] %}checked{% endif %}>
+                            Template is active
+                        </label>
+                        <div class="help-text">Inactive templates won't be used for sending emails</div>
+                    </div>
+                </div>
+                
+                <div class="form-row single">
+                    <div class="form-field">
+                        <label for="description">Description</label>
+                        <textarea name="description" id="description" rows="3">{{ template['description'] or '' }}</textarea>
+                        <div class="help-text">Optional description of when this template is used</div>
+                    </div>
+                </div>
+                
+                <div class="form-row single">
+                    <div class="form-field">
+                        <label for="variables">Available Variables</label>
+                        <input type="text" name="variables" id="variables" 
+                               value="{{ template['variables'] or '' }}">
+                        <div class="help-text">Comma-separated list of variables this template uses</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>=Á Email Content</h3>
+                
+                <div class="form-row single">
+                    <div class="form-field">
+                        <label for="subject_template">Subject Template</label>
+                        <textarea name="subject_template" id="subject_template" rows="2" required>{{ template['subject_template'] }}</textarea>
+                        <div class="help-text">Subject line template with variable placeholders</div>
+                    </div>
+                </div>
+                
+                <div class="form-row single">
+                    <div class="form-field">
+                        <label for="plain_template">Plain Text Template</label>
+                        <textarea name="plain_template" id="plain_template" class="template-textarea" required>{{ template['plain_template'] }}</textarea>
+                        <div class="help-text">Plain text version of the email</div>
+                    </div>
+                </div>
+                
+                <div class="form-row single">
+                    <div class="form-field">
+                        <label for="html_template">HTML Template</label>
+                        <textarea name="html_template" id="html_template" class="html-textarea" required>{{ template['html_template'] }}</textarea>
+                        <div class="help-text">HTML version of the email with styling</div>
+                    </div>
+                </div>
+                
+                <div class="variables-help">
+                    <h4>=' Available Template Variables</h4>
+                    <div class="variables-list">
+                        <div>{{user_name}}</div>
+                        <div>{{family_name}}</div>
+                        <div>{{magic_link}}</div>
+                        <div>{{post_title}}</div>
+                        <div>{{post_author}}</div>
+                        <div>{{post_content}}</div>
+                        <div>{{post_tags}}</div>
+                        <div>{{original_comment}}</div>
+                        <div>{{reply_author}}</div>
+                        <div>{{reply_content}}</div>
+                    </div>
+                    <p style="margin: 10px 0 0 0; font-size: 12px;">Variables will be replaced with actual values when emails are sent. Use {{variable_name}} syntax.</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                <a href="{{ url_for('admin_email_templates') }}" class="btn btn-secondary">
+                    ê Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    =æ Save Template
+                </button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
