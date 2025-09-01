@@ -24,9 +24,27 @@ app.config['DATABASE'] = os.environ.get('FAMILYBOOK_DATABASE_PATH', 'familybook.
 app.secret_key = os.environ.get('FAMILYBOOK_SECRET_KEY', 'your-secret-key-change-this-in-production')
 
 # URL configuration for subdirectory deployment
-# Set FAMILYBOOK_URL_PREFIX environment variable to '/familybook' for production
-# Leave it unset or empty for local development
-app.config['URL_PREFIX'] = os.environ.get('FAMILYBOOK_URL_PREFIX', '')
+# Auto-detect URL prefix from nginx X-Script-Name header or environment variable
+def get_url_prefix():
+    # First try environment variable
+    env_prefix = os.environ.get('FAMILYBOOK_URL_PREFIX', '')
+    if env_prefix:
+        return env_prefix
+    
+    # Try to detect from nginx proxy headers during request context
+    try:
+        from flask import has_request_context, request
+        if has_request_context():
+            script_name = request.environ.get('HTTP_X_SCRIPT_NAME') or request.environ.get('SCRIPT_NAME', '')
+            if script_name and script_name != '/':
+                return script_name
+    except:
+        pass
+    
+    return ''
+
+# Set initial URL prefix (may be updated per request)
+app.config['URL_PREFIX'] = get_url_prefix()
 app.config['APPLICATION_ROOT'] = app.config['URL_PREFIX']
 
 # If we have a URL prefix, we need to handle it properly
@@ -52,6 +70,16 @@ if app.config['URL_PREFIX']:
             return app.config.get('URL_PREFIX', '/')
     
     app.session_interface = CustomSessionInterface()
+
+# Add middleware to detect URL prefix from nginx headers
+@app.before_request
+def detect_url_prefix():
+    """Detect URL prefix from nginx X-Script-Name header and update app config"""
+    from flask import request
+    script_name = request.environ.get('HTTP_X_SCRIPT_NAME') or request.environ.get('SCRIPT_NAME', '')
+    if script_name and script_name != '/' and script_name != app.config.get('URL_PREFIX', ''):
+        app.config['URL_PREFIX'] = script_name
+        app.config['APPLICATION_ROOT'] = script_name
 
 # OAuth setup
 oauth = OAuth(app)
