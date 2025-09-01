@@ -29,6 +29,10 @@ app.secret_key = os.environ.get('FAMILYBOOK_SECRET_KEY', 'your-secret-key-change
 app.config['URL_PREFIX'] = os.environ.get('FAMILYBOOK_URL_PREFIX', '')
 app.config['APPLICATION_ROOT'] = app.config['URL_PREFIX']
 
+# Fix session cookies for subdirectory deployment
+if app.config['URL_PREFIX']:
+    app.config['SESSION_COOKIE_PATH'] = app.config['URL_PREFIX']
+
 # If we have a URL prefix, we need to handle it properly
 if app.config['URL_PREFIX']:
     from werkzeug.middleware.dispatcher import DispatcherMiddleware
