@@ -4,9 +4,6 @@ import requests
 import json
 import uuid
 
-# Allow HTTP for development/testing (disable HTTPS requirement)
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build_from_document
@@ -39,20 +36,19 @@ def get_auth_url(redirect_uri):
     auth_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
-        prompt='select_account'  # Force account selection and fresh consent
+        prompt='consent'
     )
     # Store the flow for later use
     oauth_flows[state] = flow
     return auth_url, state
 
-def handle_oauth_callback(authorization_response, redirect_uri):
+def handle_oauth_callback(state, authorization_response, redirect_uri):
     """Handle the OAuth callback and save credentials"""
-    # Create a new flow for the callback (don't rely on stored state)
-    flow = Flow.from_client_secrets_file(
-        CREDENTIALS_FILE,
-        scopes=SCOPES,
-        redirect_uri=redirect_uri
-    )
+    if state not in oauth_flows:
+        raise ValueError("Invalid OAuth state")
+    
+    flow = oauth_flows[state]
+    flow.redirect_uri = redirect_uri
     
     # Exchange authorization code for tokens
     flow.fetch_token(authorization_response=authorization_response)
@@ -61,6 +57,9 @@ def handle_oauth_callback(authorization_response, redirect_uri):
     creds = flow.credentials
     with open(TOKEN_FILE, 'wb') as token:
         pickle.dump(creds, token)
+    
+    # Clean up stored flow
+    del oauth_flows[state]
     
     return creds
 
@@ -85,6 +84,7 @@ def is_authenticated():
         pass
     
     return False
+
 
 def get_authenticated_service():
     creds = None
@@ -565,3 +565,140 @@ def download_selected_media(selected_items, upload_folder):
         'totalOriginalSize': total_original_size,
         'totalProcessedSize': total_processed_size
     }
+
+
+def create_picker_session():
+    """Create a Google Photos Picker session using the correct API endpoint"""
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, 'rb') as token:
+            creds = pickle.load(token)
+    
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            with open(TOKEN_FILE, 'wb') as token:
+                pickle.dump(creds, token)
+        else:
+            # On a headless server, authentication must be done via web flow
+            raise Exception("Authentication required. Please authenticate via the web interface.")
+    
+    # Create picker session using correct Photo Picker API endpoint
+    headers = {
+        'Authorization': f'Bearer {creds.token}',
+        'Content-Type': 'application/json'
+    }
+    
+    # Request body for picker session
+    session_data = {
+        'pickingConfig': {
+            'maxItemCount': '2000'  # Allow up to 2000 items (default)
+        }
+    }
+    
+    # Make request to Photo Picker API
+    response = requests.post(
+        'https://photospicker.googleapis.com/v1/sessions',
+        headers=headers,
+        json=session_data
+    )
+    
+    if response.status_code == 401:
+        # Token expired, refresh and retry
+        creds.refresh(Request())
+        headers['Authorization'] = f'Bearer {creds.token}'
+        response = requests.post(
+            'https://photospicker.googleapis.com/v1/sessions',
+            headers=headers,
+            json=session_data
+        )
+    
+    if response.status_code in [200, 201]:
+        return response.json()
+    else:
+        raise Exception(f"Failed to create picker session: {response.status_code} - {response.text}")
+
+
+def poll_picker_session(session_id):
+    """Poll a Google Photos Picker session for completion"""
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, 'rb') as token:
+            creds = pickle.load(token)
+    
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            raise Exception("No valid credentials for polling session")
+    
+    headers = {
+        'Authorization': f'Bearer {creds.token}',
+        'Content-Type': 'application/json'
+    }
+    
+    # Get session status from Photo Picker API
+    response = requests.get(
+        f'https://photospicker.googleapis.com/v1/sessions/{session_id}',
+        headers=headers
+    )
+    
+    if response.status_code == 401:
+        # Token expired, refresh and retry
+        creds.refresh(Request())
+        headers['Authorization'] = f'Bearer {creds.token}'
+        response = requests.get(
+            f'https://photospicker.googleapis.com/v1/sessions/{session_id}',
+            headers=headers
+        )
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Failed to poll picker session: {response.status_code} - {response.text}")
+
+
+def get_picked_media_items(session_id):
+    """Get picked media items from a Picker session using the correct API"""
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, 'rb') as token:
+            creds = pickle.load(token)
+    
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            raise Exception("No valid credentials for getting picked items")
+    
+    headers = {
+        'Authorization': f'Bearer {creds.token}',
+        'Content-Type': 'application/json'
+    }
+    
+    # Get picked media items from Picker API
+    response = requests.get(
+        f'https://photospicker.googleapis.com/v1/mediaItems?sessionId={session_id}',
+        headers=headers
+    )
+    
+    if response.status_code == 401:
+        # Token expired, refresh and retry
+        creds.refresh(Request())
+        headers['Authorization'] = f'Bearer {creds.token}'
+        response = requests.get(
+            f'https://photospicker.googleapis.com/v1/mediaItems?sessionId={session_id}',
+            headers=headers
+        )
+    
+    if response.status_code == 200:
+        return response.json()
+    elif response.status_code == 400:
+        # This might be a FAILED_PRECONDITION error - user hasn't finished selecting
+        error_data = response.json()
+        if 'FAILED_PRECONDITION' in str(error_data):
+            return {'not_ready': True, 'error': error_data}
+        else:
+            raise Exception(f"Failed to get picked items: {response.status_code} - {response.text}")
+    else:
+        raise Exception(f"Failed to get picked items: {response.status_code} - {response.text}")
