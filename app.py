@@ -47,6 +47,17 @@ def get_url_prefix():
 app.config['URL_PREFIX'] = get_url_prefix()
 app.config['APPLICATION_ROOT'] = app.config['URL_PREFIX']
 
+# Always set up custom session interface for dynamic URL prefix handling
+from flask.sessions import SecureCookieSessionInterface
+
+class CustomSessionInterface(SecureCookieSessionInterface):
+    def get_cookie_path(self, app):
+        # Dynamically get the current URL_PREFIX (may change per request)
+        current_prefix = app.config.get('URL_PREFIX', '')
+        return current_prefix if current_prefix else '/'
+
+app.session_interface = CustomSessionInterface()
+
 # If we have a URL prefix, we need to handle it properly
 if app.config['URL_PREFIX']:
     from werkzeug.middleware.dispatcher import DispatcherMiddleware
@@ -61,15 +72,6 @@ if app.config['URL_PREFIX']:
     app.wsgi_app = DispatcherMiddleware(simple, {
         app.config['URL_PREFIX']: app.wsgi_app
     })
-    
-    # Force session cookie path for subdirectory deployment
-    from flask.sessions import SecureCookieSessionInterface
-    
-    class CustomSessionInterface(SecureCookieSessionInterface):
-        def get_cookie_path(self, app):
-            return app.config.get('URL_PREFIX', '/')
-    
-    app.session_interface = CustomSessionInterface()
 
 # Add middleware to detect URL prefix from nginx headers
 @app.before_request
