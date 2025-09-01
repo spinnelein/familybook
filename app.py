@@ -653,6 +653,12 @@ def requires_admin_auth():
     """Check if admin authentication is required (only if OAuth is configured)"""
     if not is_oauth_configured():
         return False  # Open access when OAuth not configured
+    
+    # Debug session data
+    print(f"Session data: {dict(session)}")
+    print(f"URL_PREFIX: {app.config.get('URL_PREFIX', 'NOT_SET')}")
+    print(f"admin_user_id in session: {'admin_user_id' in session}")
+    
     return 'admin_user_id' not in session
 
 def redirect_to_admin_login():
