@@ -902,7 +902,7 @@
                         </div>
                         
                         <div class="post-content">
-                            {{ post['content']|safe }}
+                            {{ fix_content_urls(post['content'])|safe }}
                         </div>
                         {% if user %}
                             <div class="comments-section">
