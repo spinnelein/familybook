@@ -2263,46 +2263,6 @@ def photo_stream(magic_token, sort_order='recent', offset=0):
                          has_more=has_more,
                          total_images=total_images)
 
-@app.route('/toggle-heart/<magic_token>', methods=['POST'])
-def toggle_heart(magic_token):
-    db = get_db()
-    user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
-    if not user:
-        abort(403)
-    
-    post_id = request.form.get('post_id')
-    if not post_id:
-        return jsonify({'error': 'Missing post ID'}), 400
-    
-    # Check if user already hearted this post
-    existing_reaction = db.execute(
-        'SELECT * FROM reactions WHERE post_id = ? AND user_id = ? AND reaction_type = ?',
-        (post_id, user['id'], 'heart')
-    ).fetchone()
-    
-    if existing_reaction:
-        # Remove heart
-        db.execute('DELETE FROM reactions WHERE id = ?', (existing_reaction['id'],))
-        hearted = False
-    else:
-        # Add heart
-        db.execute('INSERT INTO reactions (post_id, user_id, reaction_type) VALUES (?, ?, ?)',
-                   (post_id, user['id'], 'heart'))
-        hearted = True
-    
-    db.commit()
-    
-    # Get updated count
-    heart_count = db.execute(
-        'SELECT COUNT(*) as count FROM reactions WHERE post_id = ? AND reaction_type = ?',
-        (post_id, 'heart')
-    ).fetchone()['count']
-    
-    return jsonify({
-        'hearted': hearted,
-        'count': heart_count
-    })
-
 # Remove the old /posts endpoint if it exists, or make it forbidden
 @app.route('/posts')
 def posts_no_token():
