@@ -591,10 +591,56 @@ View the conversation: {{magic_link}}''',
                 db.execute('INSERT INTO filter_tags (name, display_name, color) VALUES (?, ?, ?)',
                           (tag_name, display_name, color))
         
+        # Add activity log table for tracking user interactions
+        db.execute('''CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            user_name TEXT,
+            action_type TEXT NOT NULL,  -- 'visit', 'like', 'comment', 'post_create', 'post_view'
+            post_id INTEGER,
+            post_title TEXT,
+            comment_text TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (post_id) REFERENCES posts (id)
+        )''')
+        
         db.commit()
         
         # Extract images from existing posts and populate images table
         extract_images_from_posts()
+
+def log_activity(action_type, user_id=None, user_name=None, post_id=None, post_title=None, comment_text=None):
+    """Log user activity to the activity_log table"""
+    try:
+        from flask import request
+        
+        # Get user info from magic token if not provided
+        if not user_id and not user_name:
+            magic_token = request.args.get('magic_token')
+            if magic_token:
+                db = get_db()
+                user = db.execute('SELECT id, name FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+                if user:
+                    user_id = user['id']
+                    user_name = user['name']
+        
+        # Get IP and user agent
+        ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'Unknown'))
+        user_agent = request.environ.get('HTTP_USER_AGENT', '')[:500]  # Limit length
+        
+        # Insert activity log
+        db = get_db()
+        db.execute('''INSERT INTO activity_log 
+                     (user_id, user_name, action_type, post_id, post_title, comment_text, ip_address, user_agent)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                   (user_id, user_name, action_type, post_id, post_title, comment_text, ip_address, user_agent))
+        db.commit()
+        
+    except Exception as e:
+        print(f"Error logging activity: {e}")
 
 def setup_oauth():
     """Configure OAuth client with database settings"""
@@ -971,6 +1017,10 @@ def create_post(magic_token=None):
         )
         post_id = cursor.lastrowid
         db.commit()
+        
+        # Log post creation activity
+        if user:
+            log_activity('post_create', user['id'], user['name'], post_id, title)
         
         # Send email notifications using templates
         if get_setting('notifications_enabled', 'false').lower() == 'true':
@@ -1883,6 +1933,9 @@ def posts(magic_token, year_month=None, show_type=None, tag_filter=None):
     if not user:
         abort(403)
     
+    # Log visit activity
+    log_activity('visit', user['id'], user['name'])
+    
     # Get user's last login time before updating it
     last_login = user['last_login'] if user['last_login'] else '1970-01-01 00:00:00'
     
@@ -2675,6 +2728,87 @@ def admin_about_us_edit():
     except Exception as e:
         print(f"Error loading about us editor: {str(e)}")
         return "Error loading editor", 500
+
+# Activity Log Routes
+@app.route('/admin/activity-log')
+def admin_activity_log():
+    """Display activity log page"""
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return redirect_to_admin_login()
+    
+    try:
+        db = get_db()
+        
+        # Get filter parameters
+        action_filter = request.args.get('action', '')
+        user_filter = request.args.get('user', '')
+        days_filter = int(request.args.get('days', 7))
+        page = int(request.args.get('page', 1))
+        per_page = 50
+        offset = (page - 1) * per_page
+        
+        # Build filter conditions
+        conditions = []
+        params = []
+        
+        if action_filter:
+            conditions.append("action_type = ?")
+            params.append(action_filter)
+        
+        if user_filter:
+            conditions.append("user_name LIKE ?")
+            params.append(f"%{user_filter}%")
+        
+        conditions.append("created >= datetime('now', '-{} days')".format(days_filter))
+        
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        
+        # Get activity log entries
+        query = f'''SELECT * FROM activity_log 
+                   WHERE {where_clause}
+                   ORDER BY created DESC 
+                   LIMIT ? OFFSET ?'''
+        params.extend([per_page, offset])
+        
+        activities = db.execute(query, params).fetchall()
+        
+        # Get total count for pagination
+        count_query = f"SELECT COUNT(*) as total FROM activity_log WHERE {where_clause}"
+        count_params = params[:-2]  # Remove LIMIT and OFFSET params
+        total = db.execute(count_query, count_params).fetchone()['total']
+        
+        # Get unique action types for filter
+        action_types = db.execute('SELECT DISTINCT action_type FROM activity_log ORDER BY action_type').fetchall()
+        
+        # Get unique users for filter
+        users = db.execute('SELECT DISTINCT user_name FROM activity_log WHERE user_name IS NOT NULL ORDER BY user_name').fetchall()
+        
+        # Calculate pagination info
+        total_pages = (total + per_page - 1) // per_page
+        has_prev = page > 1
+        has_next = page < total_pages
+        
+        return render_template('admin_activity_log.html',
+                             activities=activities,
+                             action_types=action_types,
+                             users=users,
+                             current_filters={
+                                 'action': action_filter,
+                                 'user': user_filter,
+                                 'days': days_filter
+                             },
+                             pagination={
+                                 'page': page,
+                                 'total_pages': total_pages,
+                                 'has_prev': has_prev,
+                                 'has_next': has_next,
+                                 'total': total
+                             })
+        
+    except Exception as e:
+        print(f"Error loading activity log: {str(e)}")
+        return "Error loading activity log", 500
 
 
 if __name__ == "__main__":

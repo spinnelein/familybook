@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Activity Log - Admin Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0 0 30px 0;
+            font-size: 2.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+        }
+        
+        .nav-links {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            color: #3b82f6;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .nav-links a:hover {
+            background: #eff6ff;
+            text-decoration: none;
+        }
+        
+        .filters {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .activity-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: #374151;
+            font-weight: 600;
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .activity-type {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .activity-visit { background: #dbeafe; color: #1e40af; }
+        .activity-like { background: #fce7f3; color: #be185d; }
+        .activity-comment { background: #dcfce7; color: #166534; }
+        .activity-post_create { background: #fef3c7; color: #92400e; }
+        .activity-post_view { background: #e5e7eb; color: #374151; }
+        
+        .user-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .post-title {
+            color: #3b82f6;
+            font-weight: 500;
+        }
+        
+        .comment-preview {
+            color: #6b7280;
+            font-style: italic;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .timestamp {
+            color: #9ca3af;
+            font-size: 12px;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .pagination-info {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-links">
+            <a href="{{ url_for('admin_console') }}">← Admin Console</a>
+            <a href="{{ url_for('admin_activity_log') }}">🔄 Refresh</a>
+        </div>
+        
+        <h1>📊 Activity Log</h1>
+        
+        <!-- Filters -->
+        <form method="GET" class="filters">
+            <div class="filter-group">
+                <label for="action">Action Type</label>
+                <select name="action" id="action">
+                    <option value="">All Actions</option>
+                    {% for action_type in action_types %}
+                    <option value="{{ action_type.action_type }}" 
+                            {% if current_filters.action == action_type.action_type %}selected{% endif %}>
+                        {{ action_type.action_type.title() }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="user">User</label>
+                <select name="user" id="user">
+                    <option value="">All Users</option>
+                    {% for user in users %}
+                    <option value="{{ user.user_name }}" 
+                            {% if current_filters.user == user.user_name %}selected{% endif %}>
+                        {{ user.user_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="days">Time Period</label>
+                <select name="days" id="days">
+                    <option value="1" {% if current_filters.days == 1 %}selected{% endif %}>Last 24 hours</option>
+                    <option value="7" {% if current_filters.days == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if current_filters.days == 30 %}selected{% endif %}>Last 30 days</option>
+                    <option value="90" {% if current_filters.days == 90 %}selected{% endif %}>Last 90 days</option>
+                    <option value="365" {% if current_filters.days == 365 %}selected{% endif %}>Last year</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('admin_activity_log') }}" class="btn btn-secondary">Clear</a>
+        </form>
+        
+        <!-- Activity Table -->
+        {% if activities %}
+        <div class="activity-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Post</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in activities %}
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                {{ activity.created[:19].replace('T', ' ') }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if activity.user_name %}
+                                <div class="user-name">{{ activity.user_name }}</div>
+                            {% else %}
+                                <span style="color: #9ca3af;">Anonymous</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="activity-type activity-{{ activity.action_type }}">
+                                {{ activity.action_type.replace('_', ' ').title() }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if activity.post_title %}
+                                <div class="post-title">{{ activity.post_title }}</div>
+                            {% else %}
+                                <span style="color: #9ca3af;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if activity.comment_text %}
+                                <div class="comment-preview" title="{{ activity.comment_text }}">
+                                    "{{ activity.comment_text }}"
+                                </div>
+                            {% else %}
+                                <span style="color: #9ca3af;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span style="color: #6b7280; font-size: 12px;">{{ activity.ip_address }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if pagination.total_pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_activity_log', page=pagination.page-1, action=current_filters.action, user=current_filters.user, days=current_filters.days) }}" 
+                   class="btn btn-secondary">← Previous</a>
+            {% endif %}
+            
+            <div class="pagination-info">
+                Page {{ pagination.page }} of {{ pagination.total_pages }} 
+                ({{ pagination.total }} total activities)
+            </div>
+            
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_activity_log', page=pagination.page+1, action=current_filters.action, user=current_filters.user, days=current_filters.days) }}" 
+                   class="btn btn-secondary">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
+            <h3>No activity found</h3>
+            <p>Try adjusting your filters or check back later.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
