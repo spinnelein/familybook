@@ -61,7 +61,7 @@ mkdir -p "$BACKUP_DIR" || {
 }
 
 # Backup database and gitignored files
-if [[ -n "$BACKUP_DIR" ]]; then
+if [ -n "$BACKUP_DIR" ]; then
     print_status "Backing up local files to Synology..."
     
     # Create timestamped backup subdirectory
@@ -70,28 +70,27 @@ if [[ -n "$BACKUP_DIR" ]]; then
     mkdir -p "$BACKUP_SUBDIR"
     
     # Backup database
-    if [[ -f "familybook.db" ]]; then
+    if [ -f "familybook.db" ]; then
         cp familybook.db "$BACKUP_SUBDIR/familybook.db"
         print_success "Database backed up"
     fi
     
     # Backup other important local files (gitignored)
-    backup_files=(
-        "*.db"
-        "*.db.backup"
-        "*.pickle"
-        "*.json"
-        "oauth_flow_state_*.json"
-        "static/uploads"
-        "*.log"
-        "venv/lib/python*/site-packages/google*" 
-    )
+    print_status "Backing up local files..."
     
-    for pattern in "${backup_files[@]}"; do
-        if ls $pattern >/dev/null 2>&1; then
-            cp -r $pattern "$BACKUP_SUBDIR/" 2>/dev/null || true
-        fi
+    # Backup each type of file individually (compatible with sh and bash)
+    for pattern in "*.db" "*.db.backup" "*.pickle" "*.json" "oauth_flow_state_*.json" "*.log"; do
+        for file in $pattern; do
+            if [ -f "$file" ]; then
+                cp "$file" "$BACKUP_SUBDIR/" 2>/dev/null || true
+            fi
+        done
     done
+    
+    # Backup static/uploads directory if it exists
+    if [ -d "static/uploads" ]; then
+        cp -r "static/uploads" "$BACKUP_SUBDIR/" 2>/dev/null || true
+    fi
     
     # Create a manifest of what was backed up
     echo "Backup created on: $(date)" > "$BACKUP_SUBDIR/backup_manifest.txt"
@@ -100,7 +99,7 @@ if [[ -n "$BACKUP_DIR" ]]; then
     ls -la "$BACKUP_SUBDIR/" >> "$BACKUP_SUBDIR/backup_manifest.txt"
     
     # Keep only the last 10 backups (cleanup old ones)
-    if [[ -d "$BACKUP_DIR" ]]; then
+    if [ -d "$BACKUP_DIR" ]; then
         cd "$BACKUP_DIR"
         ls -dt backup_* | tail -n +11 | xargs -r rm -rf
         cd "$PROJECT_DIR"
@@ -125,7 +124,7 @@ print_status "Setting temporary ownership for git operations..."
 run_sudo chown -R aaron:aaron .
 
 # Stash any local changes
-if [[ -n $(git status --porcelain) ]]; then
+if [ -n "$(git status --porcelain)" ]; then
     print_warning "Local changes detected. Stashing them..."
     git stash push -m "Auto-stash before deployment $(date)"
     print_success "Local changes stashed"
@@ -165,13 +164,13 @@ run_sudo chmod -R 755 static/
 run_sudo chmod 755 .
 
 # Remove any existing socket file that might have wrong permissions
-if [[ -S "familybook.sock" ]]; then
+if [ -S "familybook.sock" ]; then
     print_status "Removing existing socket file..."
     run_sudo rm -f familybook.sock
 fi
 
 # Make sure the database is writable by www-data
-if [[ -f "familybook.db" ]]; then
+if [ -f "familybook.db" ]; then
     run_sudo chmod 664 familybook.db
     run_sudo chown www-data:www-data familybook.db
     print_success "Database permissions updated"
@@ -211,7 +210,7 @@ if run_sudo systemctl is-active --quiet "$SERVICE_NAME"; then
     print_success "$SERVICE_NAME service is running"
     
     # Verify socket was created
-    if [[ -S "familybook.sock" ]]; then
+    if [ -S "familybook.sock" ]; then
         print_success "Socket file created successfully"
         ls -la familybook.sock
     else

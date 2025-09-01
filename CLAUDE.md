@@ -27,7 +27,12 @@ The database is automatically initialized when running `app.py`. Tables are crea
 ```bash
 ./deploy.sh
 ```
-Automated deployment script that pulls latest changes from GitHub, sets permissions, initializes database, and restarts the service.
+Automated deployment script that:
+- Backs up database and local files to Synology NAS (`/mnt/synology-code/Programming/familybook/localfiles`)
+- Pulls latest changes from GitHub
+- Sets permissions and initializes database
+- Restarts the service
+- Keeps last 10 backups with automatic cleanup
 
 ## Architecture Overview
 
