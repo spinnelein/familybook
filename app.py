@@ -817,6 +817,13 @@ def send_templated_email(template_name, to_email, **context):
             print(f"Failed to render template '{template_name}'")
             return False
         
+        # Debug email content
+        print(f"Sending email '{template_name}' to {to_email}")
+        print(f"Subject: {subject}")
+        print(f"HTML body length: {len(html_body or '')} chars")
+        print(f"Plain body length: {len(plain_body or '')} chars")
+        print(f"HTML body starts with: {(html_body or '')[:100]}...")
+        
         return send_traditional_smtp_email(to_email, subject, html_body, plain_body)
     
     except Exception as e:
@@ -888,8 +895,9 @@ def send_traditional_smtp_email(to_email, subject, html_body, plain_body):
         msg['Date'] = email.utils.formatdate()
         
         # Add both plain text and HTML versions
-        msg.attach(MIMEText(plain_body, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
+        # Note: Attach plain text first, HTML last (per RFC, last is preferred)
+        msg.attach(MIMEText(plain_body, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
         
         # Send email
         server = smtplib.SMTP(smtp_server, smtp_port)
