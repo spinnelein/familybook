@@ -78,13 +78,8 @@ if app.config['URL_PREFIX']:
 def detect_url_prefix():
     """Detect URL prefix from nginx X-Script-Name header and update app config"""
     from flask import request
-    print(f"REQUEST: {request.method} {request.path}")
-    print(f"ENVIRON HTTP_X_SCRIPT_NAME: {request.environ.get('HTTP_X_SCRIPT_NAME', 'NOT_SET')}")
-    print(f"ENVIRON SCRIPT_NAME: {request.environ.get('SCRIPT_NAME', 'NOT_SET')}")
-    
     script_name = request.environ.get('HTTP_X_SCRIPT_NAME') or request.environ.get('SCRIPT_NAME', '')
     if script_name and script_name != '/' and script_name != app.config.get('URL_PREFIX', ''):
-        print(f"UPDATING URL_PREFIX from {app.config.get('URL_PREFIX', 'NOT_SET')} to {script_name}")
         app.config['URL_PREFIX'] = script_name
         app.config['APPLICATION_ROOT'] = script_name
 
@@ -658,11 +653,6 @@ def requires_admin_auth():
     """Check if admin authentication is required (only if OAuth is configured)"""
     if not is_oauth_configured():
         return False  # Open access when OAuth not configured
-    
-    # Debug session data
-    print(f"Session data: {dict(session)}")
-    print(f"URL_PREFIX: {app.config.get('URL_PREFIX', 'NOT_SET')}")
-    print(f"admin_user_id in session: {'admin_user_id' in session}")
     
     return 'admin_user_id' not in session
 
