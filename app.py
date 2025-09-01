@@ -14,11 +14,60 @@ from authlib.integrations.flask_client import OAuth
 import email.utils
 
 app = Flask(__name__)
+
+# Add request debugging for Google Photos endpoints
+def write_debug_log(message):
+    """Write debug message to file"""
+    try:
+        with open('/tmp/google_photos_debug.log', 'a') as f:
+            import datetime
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"[{timestamp}] {message}\n")
+    except PermissionError:
+        # Fallback to print if can't write to file
+        print(f"DEBUG: {message}")
+    except Exception as e:
+        # Just print the message if any other error occurs
+        print(f"DEBUG: {message} (log error: {e})")
+
+@app.before_request
+def debug_google_photos_requests():
+    if '/api/google-photos/' in request.path or '/admin/google-photos/' in request.path:
+        msg = f"DEBUG REQUEST: {request.method} {request.path} from {request.remote_addr}"
+        print(msg)
+        write_debug_log(msg)
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max upload size for videos
 app.config['DATABASE'] = 'familybook.db'
 app.secret_key = 'your-secret-key'
+
+# Configure Flask immediately for URL generation in emails
+app.config['SERVER_NAME'] = 'home.slugranch.org'
+app.config['APPLICATION_ROOT'] = '/familybook'
+app.config['PREFERRED_URL_SCHEME'] = 'http'
+
+# Configure Flask for URL generation in emails
+def configure_flask_urls():
+    """Configure Flask settings for URL generation in background tasks"""
+    try:
+        with app.app_context():
+            server_name = get_setting('server_name', 'localhost')
+            app_root = get_setting('application_root', '')
+            url_scheme = get_setting('preferred_url_scheme', 'http')
+            
+            app.config['SERVER_NAME'] = server_name
+            if app_root:
+                app.config['APPLICATION_ROOT'] = app_root
+            app.config['PREFERRED_URL_SCHEME'] = url_scheme
+            
+            print(f"Flask URL config: SERVER_NAME={server_name}, APPLICATION_ROOT={app_root}, SCHEME={url_scheme}")
+    except:
+        # If database not ready yet, set defaults
+        app.config['SERVER_NAME'] = 'home.slugranch.org'
+        app.config['APPLICATION_ROOT'] = '/familybook'
+        app.config['PREFERRED_URL_SCHEME'] = 'http'
 
 # OAuth setup
 oauth = OAuth(app)
@@ -258,6 +307,13 @@ def init_db():
             UNIQUE(user_id)
         )''')
         
+        # Add about_us table for about us page content
+        db.execute('''CREATE TABLE IF NOT EXISTS about_us (
+            id INTEGER PRIMARY KEY,
+            content TEXT NOT NULL,
+            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
         # Insert default SMTP settings if they don't exist
         default_settings = [
             ('smtp_server', '', 'SMTP server hostname (e.g., smtp.gmail.com)'),
@@ -265,10 +321,10 @@ def init_db():
             ('smtp_username', '', 'SMTP username/email address'),
             ('smtp_password', '', 'SMTP password or app password'),
             ('smtp_use_tls', 'true', 'Use TLS encryption (true/false)'),
-            ('email_from_name', 'Slugranch Familybook', 'Display name for sent emails'),
+            ('email_from_name', 'Fernwood Familybook', 'Display name for sent emails'),
             ('email_from_address', '', 'From email address'),
             ('notifications_enabled', 'false', 'Enable email notifications (true/false)'),
-            ('family_name', 'Slugranch', 'Family name used in email templates'),
+            ('family_name', 'Fernwood', 'Family name used in email templates'),
             ('oauth_client_id', '', 'Google OAuth Client ID'),
             ('oauth_client_secret', '', 'Google OAuth Client Secret'),
             ('oauth_redirect_uri', '', 'OAuth redirect URI (e.g., http://localhost:5000/admin/oauth/callback)')
@@ -279,6 +335,16 @@ def init_db():
             if not existing:
                 db.execute('INSERT INTO settings (key, value, description) VALUES (?, ?, ?)',
                           (key, default_value, description))
+        
+        # Configure Flask URL settings for email generation
+        server_name = get_setting('server_name', 'home.slugranch.org')
+        app_root = get_setting('application_root', '/familybook')
+        url_scheme = get_setting('preferred_url_scheme', 'http')
+        
+        app.config['SERVER_NAME'] = server_name
+        app.config['APPLICATION_ROOT'] = app_root  
+        app.config['PREFERRED_URL_SCHEME'] = url_scheme
+        print(f"Flask URL config: SERVER_NAME={server_name}, APPLICATION_ROOT={app_root}, SCHEME={url_scheme}")
         
         # Insert default email templates if they don't exist
         default_templates = [
@@ -685,6 +751,39 @@ def send_templated_email(template_name, to_email, **context):
         print(f"Error sending templated email '{template_name}' to {to_email}: {e}")
         return False
 
+def get_daily_email_stats():
+    """Get daily email statistics for admin dashboard"""
+    try:
+        db = get_db()
+        from datetime import date, timedelta
+        
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        
+        # Get today's email counts
+        today_count = db.execute('''SELECT COUNT(*) as count FROM daily_email_log 
+                                   WHERE email_date = ?''', (today,)).fetchone()
+        
+        # Get yesterday's email counts  
+        yesterday_count = db.execute('''SELECT COUNT(*) as count FROM daily_email_log 
+                                       WHERE email_date = ?''', (yesterday,)).fetchone()
+        
+        # Get users who have reached daily limit today
+        limited_users = db.execute('''SELECT u.email, del.email_count, del.last_sent 
+                                     FROM daily_email_log del 
+                                     JOIN users u ON del.user_id = u.id
+                                     WHERE del.email_date = ? AND del.email_count >= 1
+                                     ORDER BY del.last_sent DESC''', (today,)).fetchall()
+        
+        return {
+            'today_emails': today_count['count'] if today_count else 0,
+            'yesterday_emails': yesterday_count['count'] if yesterday_count else 0,
+            'limited_users': limited_users
+        }
+    except Exception as e:
+        print(f"Error getting daily email stats: {e}")
+        return {'today_emails': 0, 'yesterday_emails': 0, 'limited_users': []}
+
 def send_notification_email(template_name, user_id, **context):
     """Send a notification email to a user based on their preferences"""
     try:
@@ -702,9 +801,9 @@ def send_notification_email(template_name, user_id, **context):
         # Check if user wants this type of notification
         if prefs:
             notification_enabled = False
-            if template_name == 'account_created' and prefs['account_created']:
+            if template_name in ['account_created', 'user_invitation'] and prefs['account_created']:
                 notification_enabled = True
-            elif template_name == 'new_post' and prefs['new_post']:
+            elif template_name in ['new_post', 'new_post_notification'] and prefs['new_post']:
                 notification_enabled = True
             elif template_name == 'major_event' and prefs['major_event']:
                 notification_enabled = True
@@ -715,11 +814,43 @@ def send_notification_email(template_name, user_id, **context):
                 print(f"User {user['email']} has disabled '{template_name}' notifications")
                 return False
         
+        # Check daily email limit (max 1 email per day)
+        from datetime import date
+        today = date.today()
+        
+        # Check if user already received an email today
+        existing_log = db.execute('''SELECT * FROM daily_email_log 
+                                    WHERE user_id = ? AND email_date = ?''', 
+                                 (user_id, today)).fetchone()
+        
+        if existing_log and existing_log['email_count'] >= 1:
+            print(f"Daily email limit reached for user {user['email']} on {today}")
+            return False
+        
         # Add user context
         context['user_name'] = user['name']
         context['magic_link'] = url_for('posts', magic_token=user['magic_token'], _external=True)
         
-        return send_templated_email(template_name, user['email'], **context)
+        # Attempt to send email
+        email_sent = send_templated_email(template_name, user['email'], **context)
+        
+        if email_sent:
+            # Log successful email send
+            if existing_log:
+                # Update existing log entry
+                db.execute('''UPDATE daily_email_log 
+                             SET email_count = email_count + 1, last_sent = CURRENT_TIMESTAMP 
+                             WHERE user_id = ? AND email_date = ?''',
+                          (user_id, today))
+            else:
+                # Create new log entry
+                db.execute('''INSERT INTO daily_email_log (user_id, email_date, email_count) 
+                             VALUES (?, ?, 1)''',
+                          (user_id, today))
+            db.commit()
+            print(f"Email sent and logged for user {user['email']} on {today}")
+        
+        return email_sent
     
     except Exception as e:
         print(f"Error sending notification email to user {user_id}: {e}")
@@ -734,7 +865,7 @@ def send_traditional_smtp_email(to_email, subject, html_body, plain_body):
         smtp_username = get_setting('smtp_username', '')
         smtp_password = get_setting('smtp_password', '')
         smtp_use_tls = get_setting('smtp_use_tls', 'true').lower() == 'true'
-        email_from_name = get_setting('email_from_name', 'Slugranch Familybook')
+        email_from_name = get_setting('email_from_name', 'Fernwood Familybook')
         email_from_address = get_setting('email_from_address', '')
         
         # Validate required settings (username/password optional for local servers)
@@ -830,7 +961,7 @@ def create_post(magic_token=None):
         if get_setting('notifications_enabled', 'false').lower() == 'true':
             # Determine if this is a major event
             is_major = tags and 'major' in tags.lower()
-            template_name = 'major_event' if is_major else 'new_post'
+            template_name = 'major_event' if is_major else 'new_post_notification'
             
             # Get all users who should receive notifications
             db = get_db()
@@ -1111,7 +1242,32 @@ def oauth_login():
     redirect_uri = get_setting('oauth_redirect_uri', url_for('oauth_callback', _external=True))
     return oauth.google.authorize_redirect(redirect_uri)
 
-# OAuth callback route
+# Google Photos OAuth callback route (separate from admin console)
+@app.route('/admin/google-photos-clean/callback')
+def google_photos_clean_callback():
+    """Handle clean Google Photos OAuth callback"""
+    state_file = f'/tmp/oauth_flow_state_spinnelein_at_gmail_com.json'
+    if os.path.exists(state_file):
+        try:
+            authorization_response_url = request.url
+            success = google_photos_picker.handle_oauth_callback(authorization_response_url)
+            
+            if success:
+                flash('Google Photos authenticated successfully for spinnelein@gmail.com!', 'success')
+            else:
+                flash('Google Photos authentication failed.', 'danger')
+                
+            return redirect(url_for('admin_console'))
+            
+        except google_photos_picker.GooglePhotosPickerError as e:
+            print(f"Clean Google Photos callback error: {e}")
+            flash('Authentication failed.', 'danger')
+            return redirect(url_for('admin_console'))
+    else:
+        flash('Invalid Google Photos authentication state.', 'danger')
+        return redirect(url_for('admin_console'))
+
+# OAuth callback route (for admin console authentication only)
 @app.route('/admin/oauth/callback')
 def oauth_callback():
     setup_oauth()
@@ -1121,6 +1277,12 @@ def oauth_callback():
     
     try:
         token = oauth.google.authorize_access_token()
+        
+        # Clear any leftover Google Photos session data (shouldn't be present for admin auth)
+        session.pop('oauth_purpose', None)
+        session.pop('oauth_state', None)
+        
+        # Handle admin console authentication
         user_info = token.get('userinfo')
         
         if user_info:
@@ -1153,6 +1315,35 @@ def oauth_callback():
         flash('Authentication failed.', 'danger')
         return redirect(url_for('admin_login'))
 
+# Legacy Google Photos OAuth route (DISABLED - use google-photos-clean instead)
+@app.route('/admin/google-photos/auth')
+def google_photos_auth_legacy():
+    """Legacy Google Photos OAuth flow - redirects to new clean implementation"""
+    print(f"DEBUG: Legacy google_photos_auth route called - redirecting to clean implementation")
+    flash('Redirecting to updated Google Photos authentication...', 'info')
+    return redirect(url_for('google_photos_clean_auth'))
+
+# New clean Google Photos authentication
+@app.route('/admin/google-photos-clean/auth')
+def google_photos_clean_auth():
+    """Initiate clean Google Photos OAuth flow for spinnelein@gmail.com"""
+    try:
+        print(f"DEBUG: google_photos_clean_auth called")
+        auth_url = google_photos_picker.get_auth_url()
+        print(f"DEBUG: Clean Google Photos auth URL: {auth_url}")
+        return redirect(auth_url)
+        
+    except google_photos_picker.GooglePhotosPickerError as e:
+        print(f"DEBUG: Clean Google Photos OAuth GooglePhotosPickerError: {e}")
+        flash('Failed to initiate Google Photos authentication.', 'danger')
+        return redirect(url_for('admin_console'))
+    except Exception as e:
+        print(f"DEBUG: Clean Google Photos OAuth unexpected error: {e}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        flash(f'Failed to initiate Google Photos authentication: {str(e)}', 'danger')
+        return redirect(url_for('admin_console'))
+
 # Admin logout route
 @app.route('/admin/logout')
 def admin_logout():
@@ -1184,7 +1375,7 @@ def admin_console():
             # Send welcome email if notifications are enabled
             if get_setting('notifications_enabled', 'false').lower() == 'true':
                 try:
-                    send_notification_email('account_created', user_id)
+                    send_notification_email('user_invitation', user_id)
                     print(f"Welcome email sent to {email}")
                 except Exception as e:
                     print(f"Failed to send welcome email to {email}: {e}")
@@ -1333,7 +1524,39 @@ def admin_settings():
             'description': setting['description']
         }
     
-    return render_template('admin_settings.html', settings=settings)
+    # Get daily email statistics
+    email_stats = get_daily_email_stats()
+    
+    return render_template('admin_settings.html', settings=settings, email_stats=email_stats)
+
+# About Us Management
+@app.route('/admin/about-us', methods=['GET', 'POST'])
+def admin_about_us():
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return redirect_to_admin_login()
+    
+    db = get_db()
+    
+    if request.method == 'POST':
+        content = request.form['content']
+        
+        # Update or insert the about us content
+        existing = db.execute('SELECT id FROM about_us WHERE id = 1').fetchone()
+        if existing:
+            db.execute('UPDATE about_us SET content = ?, updated = CURRENT_TIMESTAMP WHERE id = 1', (content,))
+        else:
+            db.execute('INSERT INTO about_us (id, content) VALUES (1, ?)', (content,))
+        db.commit()
+        
+        flash('About Us page updated successfully!', 'success')
+        return redirect(url_for('admin_about_us'))
+    
+    # Get current content
+    about_content = db.execute('SELECT content FROM about_us WHERE id = 1').fetchone()
+    content = about_content[0] if about_content else ""
+    
+    return render_template('admin_about_us_edit.html', content=content)
 
 # Email Templates Management
 @app.route('/admin/email-templates')
@@ -1680,13 +1903,13 @@ def test_email():
             return jsonify({'success': False, 'error': 'No test email address available'})
         
         # Get email settings for display names
-        email_from_name = get_setting('email_from_name', 'Slugranch Familybook')
+        email_from_name = get_setting('email_from_name', 'Fernwood Familybook')
         
         html_body = """
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center; color: white;">
-                <h1 style="margin: 0;">🏠 Slugranch Familybook</h1>
+                <h1 style="margin: 0;">🏠 Fernwood Familybook</h1>
                 <p style="margin: 5px 0 0 0;">Email Configuration Test</p>
             </div>
             <div style="padding: 20px; background: #f9f9f9;">
@@ -1701,7 +1924,7 @@ def test_email():
         """
         
         plain_body = """
-Slugranch Familybook - Email Configuration Test
+Fernwood Familybook - Email Configuration Test
 
 ✅ Email Settings Working!
 
@@ -1713,7 +1936,7 @@ If you received this email, your notification system is ready to go!
         # Send test email using local SMTP
         success = send_traditional_smtp_email(
             test_email,
-            'Test Email from Slugranch Familybook',
+            'Test Email from Fernwood Familybook',
             html_body,
             plain_body
         )
@@ -1999,6 +2222,26 @@ def delete_post(magic_token, post_id):
     
     return redirect(url_for('posts', magic_token=magic_token))
 
+def extract_images_from_content(content):
+    """Extract image URLs from post content HTML"""
+    import re
+    if not content:
+        return []
+    
+    # Find all img tags in the content
+    img_pattern = r'<img[^>]+src=["\']([^"\']+)["\'][^>]*>'
+    matches = re.findall(img_pattern, content)
+    
+    # Filter for local uploaded images (not external URLs)
+    local_images = []
+    for match in matches:
+        if 'uploads/img_' in match or 'uploads/vid_' in match:
+            # Extract just the filename
+            filename = match.split('/')[-1]
+            local_images.append(filename)
+    
+    return local_images
+
 @app.route('/photos/<magic_token>')
 @app.route('/photos/<magic_token>/<sort_order>')
 @app.route('/photos/<magic_token>/<sort_order>/<int:offset>')
@@ -2034,12 +2277,53 @@ def photo_stream(magic_token, sort_order='recent', offset=0):
             LIMIT ? OFFSET ?
         ''', (limit, offset)).fetchall()
     
+    # Also get embedded images from post content
+    posts_with_content = db.execute('''
+        SELECT p.id, p.title, p.content, p.created, u.name as author_name
+        FROM posts p
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE p.content IS NOT NULL
+        ORDER BY p.created DESC
+    ''').fetchall()
+    
+    # Extract embedded images and create image-like objects
+    embedded_images = []
+    for post in posts_with_content:
+        embedded_filenames = extract_images_from_content(post['content'])
+        for filename in embedded_filenames:
+            # Check if this image is already in the images table
+            existing = any(img['filename'] == filename for img in images)
+            if not existing:
+                # Create a pseudo-image object with proper URL
+                image_url = url_for('uploaded_file', filename=filename, _external=True)
+                embedded_images.append({
+                    'id': f"embedded_{post['id']}_{filename}",
+                    'filename': filename,
+                    'url': image_url,
+                    'post_id': post['id'],
+                    'post_title': post['title'],
+                    'author_name': post['author_name'],
+                    'post_created': post['created'],
+                    'upload_date': post['created'],  # Use post creation date
+                    'is_embedded': True
+                })
+    
+    # Combine and sort all images
+    all_images = list(images) + embedded_images
+    if sort_order == 'oldest':
+        all_images.sort(key=lambda x: x['upload_date'] if 'upload_date' in x else x['post_created'])
+    else:
+        all_images.sort(key=lambda x: x['upload_date'] if 'upload_date' in x else x['post_created'], reverse=True)
+    
+    # Apply pagination to combined results
+    paginated_images = all_images[offset:offset+limit]
+    
     # Check if there are more images
-    total_images = db.execute('SELECT COUNT(*) as count FROM images').fetchone()['count']
+    total_images = len(all_images)
     has_more = (offset + limit) < total_images
     
     return render_template('photo_stream.html', 
-                         images=images, 
+                         images=paginated_images, 
                          user=user, 
                          sort_order=sort_order, 
                          offset=offset,
@@ -2091,17 +2375,93 @@ def toggle_heart(magic_token):
 def posts_no_token():
     abort(403)
 
-# Google Photos Picker API (2024) - Server-side implementation
+@app.route('/about')
+def about_us():
+    """Display the about us page"""
+    db = get_db()
+    about_content = db.execute('SELECT content FROM about_us WHERE id = 1').fetchone()
+    
+    if about_content:
+        content = about_content[0]
+    else:
+        content = "<p>Welcome to our family photo sharing site!</p><p>This page can be edited by administrators.</p>"
+    
+    return render_template('about_us.html', content=content)
+
+# Google Photos OAuth Routes
+@app.route('/google-photos/auth')
+def google_photos_auth():
+    """Initiate Google Photos OAuth flow"""
+    try:
+        # Build the redirect URI
+        redirect_uri = url_for('google_photos_callback', _external=True)
+        
+        # Get the authorization URL
+        from google_photos import get_auth_url
+        auth_url, state = get_auth_url(redirect_uri)
+        
+        # Store state in session for security
+        session['oauth_state'] = state
+        
+        # Redirect user to Google's OAuth consent screen
+        return redirect(auth_url)
+    except Exception as e:
+        return f"Error initiating OAuth: {str(e)}", 500
+
+@app.route('/google-photos/callback')
+def google_photos_callback():
+    """Handle Google Photos OAuth callback"""
+    try:
+        # Get the state and code from the callback
+        state = request.args.get('state')
+        code = request.args.get('code')
+        error = request.args.get('error')
+        
+        if error:
+            return f"OAuth error: {error}", 400
+        
+        # Verify state matches
+        if state != session.get('oauth_state'):
+            return "Invalid OAuth state", 400
+        
+        # Build the redirect URI (must match exactly)
+        redirect_uri = url_for('google_photos_callback', _external=True)
+        
+        # Handle the OAuth callback
+        from google_photos import handle_oauth_callback
+        creds = handle_oauth_callback(request.url, redirect_uri)
+        
+        # Clear the state from session
+        session.pop('oauth_state', None)
+        
+        # Redirect to a success page or back to the create post page
+        return redirect(url_for('create_post'))
+    except Exception as e:
+        return f"Error handling OAuth callback: {str(e)}", 500
+
+
+# Google Photos Picker API Routes
 @app.route('/api/google-photos/create-session', methods=['POST'])
 def create_picker_session_endpoint():
     """Create a Google Photos Picker session"""
     try:
+        from google_photos import is_authenticated
+        
+        # Check if authenticated
+        if not is_authenticated():
+            auth_url = url_for('google_photos_auth', _external=True)
+            return jsonify({
+                'success': False,
+                'error': 'Google Photos authentication required',
+                'auth_required': True,
+                'auth_url': auth_url
+            }), 401
+        
         # Use the updated create_picker_session function
         picker_session = create_picker_session()
         
         session_id = picker_session.get('id')
         picker_uri = picker_session.get('pickerUri')
-        
         
         if not session_id or not picker_uri:
             return jsonify({
@@ -2117,6 +2477,17 @@ def create_picker_session_endpoint():
         
     except Exception as e:
         print(f"Error creating picker session: {str(e)}")
+        
+        # If authentication is required, return appropriate response
+        if "Authentication required" in str(e):
+            auth_url = url_for('google_photos_auth', _external=True)
+            return jsonify({
+                'success': False,
+                'error': 'Google Photos authentication required',
+                'auth_required': True,
+                'auth_url': auth_url
+            }), 401
+        
         return jsonify({
             'success': False,
             'error': str(e)
@@ -2343,44 +2714,6 @@ def download_selected_media():
             'success': False,
             'error': str(e)
         }), 500
-
-@app.route('/test-polling')
-def test_polling():
-    return '''
-    <!DOCTYPE html>
-    <html><head><title>Test Polling</title></head><body>
-    <h1>Test Google Photos Polling</h1>
-    <button onclick="testPolling()">Test Poll Session</button>
-    <div id="results"></div>
-    <script>
-        async function testPolling() {
-            const sessionId = 'e94bd304-1ab4-440f-a4bc-54094baae781';
-            try {
-                console.log('Testing polling...');
-                const response = await fetch(`/api/google-photos/poll-session/${sessionId}`);
-                const pollData = await response.json();
-                console.log('Poll response:', pollData);
-                document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(pollData, null, 2) + '</pre>';
-                
-                if (pollData.selectedItems && pollData.selectedItems.length > 0) {
-                    console.log('Testing download...');
-                    const downloadResponse = await fetch('/api/google-photos/download-selected', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ selectedItems: pollData.selectedItems })
-                    });
-                    const downloadData = await downloadResponse.json();
-                    console.log('Download response:', downloadData);
-                    document.getElementById('results').innerHTML += '<h3>Download:</h3><pre>' + JSON.stringify(downloadData, null, 2) + '</pre>';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('results').innerHTML = 'Error: ' + error.message;
-            }
-        }
-    </script>
-    </body></html>
-    '''
 
 if __name__ == "__main__":
     init_db()

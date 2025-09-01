@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Photo Stream - Slugranch Familybook</title>
+    <title>Photo Stream - Fernwood Familybook</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -94,7 +94,7 @@
         
         .photo-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 1fr;
             gap: 20px;
             max-width: 1200px;
             margin: 0 auto;
@@ -107,6 +107,7 @@
             overflow: hidden;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            max-width: 100%;
         }
         
         .photo-item:hover {
@@ -116,14 +117,16 @@
         
         .photo-item img {
             width: 100%;
-            height: 250px;
-            object-fit: cover;
+            height: auto;
+            max-width: 100%;
+            object-fit: contain;
             cursor: pointer;
             transition: all 0.3s ease;
+            display: block;
         }
         
         .photo-item img:hover {
-            transform: scale(1.05);
+            transform: scale(1.02);
         }
         
         .photo-info {
@@ -218,11 +221,17 @@
         }
         
         /* Responsive Design */
-        @media (max-width: 768px) {
+        
+        /* Mobile: Single column */
+        @media (max-width: 767px) {
             .photo-grid {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                grid-template-columns: 1fr;
                 gap: 15px;
                 padding: 0 15px;
+            }
+            
+            .photo-item {
+                max-width: 100%;
             }
             
             .header {
@@ -242,6 +251,30 @@
             
             .header h1 {
                 font-size: 2rem;
+            }
+        }
+        
+        /* Tablet: Two columns */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .photo-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+        }
+        
+        /* Desktop: Three columns */
+        @media (min-width: 1024px) {
+            .photo-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 25px;
+            }
+        }
+        
+        /* Large desktop: Four columns */
+        @media (min-width: 1400px) {
+            .photo-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 30px;
             }
         }
         
@@ -273,7 +306,7 @@
 <body>
     <div class="header">
         <h1>📸 Photo Stream</h1>
-        <p>All photos from Slugranch Familybook</p>
+        <p>All photos from Fernwood Familybook</p>
     </div>
     
     <div class="controls">

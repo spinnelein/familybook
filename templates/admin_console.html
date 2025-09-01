@@ -212,6 +212,13 @@
             color: #64748b;
         }
         
+        .user-last-login {
+            color: #9ca3af;
+            font-size: 12px;
+            margin-top: 4px;
+            line-height: 1.2;
+        }
+        
         .admin-toggle-btn {
             border: none;
             padding: 6px 12px;
@@ -294,7 +301,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>⚙️ Admin Console</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="margin: 0;">⚙️ Admin Console</h1>
+            <a href="{{ url_for('admin_logout') }}" style="background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                🚪 Logout
+            </a>
+        </div>
         
         <div class="flash-messages">
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -338,6 +350,14 @@
                         <tr>
                             <td>
                                 <div class="user-name">{{ user['name'] }}</div>
+                                <div class="user-last-login">
+                                    Last login: 
+                                    {% if user['last_login'] %}
+                                        {{ user['last_login'][:19].replace('T', ' ') }}
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </div>
                             </td>
                             <td>
                                 <div class="user-email">{{ user['email'] }}</div>
@@ -476,14 +496,18 @@
         </div>
     </div>
     
-    <div class="container" style="text-align: center; margin-top: 30px;">
+    <div class="container" style="text-align: center; margin-top: 30px; display: flex; gap: 20px; justify-content: center;">
         <a href="{{ url_for('admin_settings') }}" class="btn btn-success">⚙️ Email Settings</a>
+        <a href="{{ url_for('admin_email_templates') }}" class="btn btn-success">📧 Email Templates</a>
+        <a href="{{ url_for('admin_about_us') }}" class="btn btn-success">📖 Edit About Us</a>
     </div>
     
     <script>
         async function updateNotificationPrefs(userId, preference) {
             try {
-                const response = await fetch(`/admin/users/update-notifications/${userId}`, {
+                const baseUrl = '{{ url_for('update_user_notifications', user_id=1) }}';
+                const url = baseUrl.replace('1', userId);
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -503,7 +527,9 @@
         
         async function toggleAdminStatus(userId) {
             try {
-                const response = await fetch(`/admin/users/toggle-admin/${userId}`, {
+                const baseUrl = '{{ url_for('toggle_admin_status', user_id=1) }}';
+                const url = baseUrl.replace('1', userId);
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

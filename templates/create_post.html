@@ -752,10 +752,11 @@
             }
 
             try {
-                console.log('Sending request to /upload-multiple-media');
+                const uploadUrl = '{{ url_for("upload_multiple_media") }}';
+                console.log('Sending request to:', uploadUrl);
                 console.log(`Total size reduction: ${formatFileSize(totalOriginalSize)} → ${formatFileSize(totalProcessedSize)} (${Math.round((1 - totalProcessedSize/totalOriginalSize) * 100)}% smaller)`);
                 
-                const response = await fetch('/upload-multiple-media', {
+                const response = await fetch(uploadUrl, {
                     method: 'POST',
                     body: formData
                 });
@@ -924,7 +925,7 @@
             try {
                 // Step 1: Create picker session
                 console.log('Creating picker session...');
-                const response = await fetch('/api/google-photos/create-session', {
+                const response = await fetch('{{ url_for("create_picker_session_endpoint") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -934,6 +935,54 @@
                 const sessionData = await response.json();
                 
                 if (!sessionData.success) {
+                    // Check if this is an authentication requirement (not an error)
+                    if (sessionData.auth_required && sessionData.auth_url) {
+                        console.log('Authentication required, redirecting to:', sessionData.auth_url);
+                        
+                        loading.style.display = 'none';
+                        grid.innerHTML = `
+                            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">
+                                <h3 style="color: #1e293b; margin-bottom: 20px;">🔐 Google Photos Authentication Required</h3>
+                                
+                                <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid #3b82f6; border-radius: 12px; padding: 25px; margin: 20px 0;">
+                                    <h4 style="margin: 0 0 15px 0; color: #1e40af;">📷 Authenticate with Google Photos</h4>
+                                    <p style="margin: 10px 0; color: #1e40af; line-height: 1.6;">
+                                        To import photos from Google Photos, you need to authenticate first.
+                                        Click the button below to securely connect your Google account.
+                                    </p>
+                                </div>
+                                
+                                <div style="margin: 25px 0;">
+                                    <a href="${sessionData.auth_url}" target="_blank" 
+                                       style="display: inline-block; background: #4f46e5; color: white; text-decoration: none; 
+                                              padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;
+                                              box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); 
+                                              transition: all 0.2s; border: none;">
+                                        🚀 Authenticate Google Photos
+                                    </a>
+                                </div>
+                                
+                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                                    <h4 style="margin: 0 0 10px 0; color: #374151;">📋 Instructions:</h4>
+                                    <ol style="text-align: left; margin: 10px 0; padding-left: 20px; color: #4b5563; line-height: 1.6;">
+                                        <li><strong>Click "Authenticate Google Photos"</strong> above</li>
+                                        <li><strong>Sign in</strong> with your Google account</li>
+                                        <li><strong>Grant permissions</strong> for Google Photos access</li>
+                                        <li><strong>Return to this page</strong> and try "Browse Google Photos" again</li>
+                                    </ol>
+                                </div>
+                                
+                                <button onclick="closeGooglePhotosModal()" class="btn btn-secondary" 
+                                        style="background: #6b7280; color: white; border: none; padding: 10px 20px; 
+                                               border-radius: 6px; cursor: pointer; margin-top: 15px;">
+                                    Close
+                                </button>
+                            </div>
+                        `;
+                        return; // Exit early - not an error, just needs authentication
+                    }
+                    
+                    // If not auth required, then it's a real error
                     throw new Error(sessionData.error || 'Failed to create picker session');
                 }
                 
@@ -1027,7 +1076,7 @@
             // Start polling every 3 seconds
             pollingInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/google-photos/poll-session/${currentPickerSession}`);
+                    const response = await fetch(`{{ url_for("poll_picker_session_endpoint", session_id="") }}${currentPickerSession}`);
                     const pollData = await response.json();
                     
                     if (pollData.success && pollData.completed && !sessionCompleted) {
@@ -1083,7 +1132,7 @@
                     </div>
                 `;
                 
-                const response = await fetch('/api/google-photos/download-selected', {
+                const response = await fetch('{{ url_for("download_selected_media") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1221,6 +1270,8 @@
             }
         }
         
+        // Note: This function is no longer used - Google Photos import is handled by download_selected_media
+        // Keeping for reference only
         async function importSelectedPhotos() {
             if (selectedPhotos.length === 0) return;
             
@@ -1231,7 +1282,8 @@
             importBtn.textContent = '⏳ Importing...';
             
             try {
-                const response = await fetch('/api/google-photos/import', {
+                // This endpoint no longer exists - use download_selected_media instead
+                const response = await fetch('#', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
