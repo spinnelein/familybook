@@ -23,6 +23,12 @@ The database is automatically initialized when running `app.py`. Tables are crea
 - Create user table migration: `python migrations/create\ user\ table.py`
 - Manual table creation: `python maketable.py`
 
+**Deployment:**
+```bash
+./deploy.sh
+```
+Automated deployment script that pulls latest changes from GitHub, sets permissions, initializes database, and restarts the service.
+
 ## Architecture Overview
 
 This is a Flask-based family photo sharing application with the following key components:

@@ -1,207 +1,155 @@
 #!/bin/bash
-set -e
 
-# Familybook Ubuntu Deployment Script
-# Run as root: sudo bash deploy.sh
+# FamilyBook Deployment Script
+# This script pulls the latest version from GitHub, sets permissions, and restarts the service
 
-echo "🏠 Familybook Ubuntu Deployment Script"
-echo "======================================"
+set -e  # Exit on any error
 
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-   echo "❌ This script must be run as root (use sudo)"
-   exit 1
-fi
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Get configuration from user
-read -p "📍 Enter your Synology NAS IP address: " SYNOLOGY_IP
-read -p "📁 Enter the NFS share path (e.g., /volume1/familybook): " NFS_SHARE
-read -p "🌐 Enter your domain name or server IP: " DOMAIN_NAME
+# Configuration
+PROJECT_DIR="/var/www/apps/familybook"
+SERVICE_NAME="familybook"
+SUDO_PASSWORD="053hbc"
 
-echo ""
-echo "🔧 Configuration:"
-echo "   Synology IP: $SYNOLOGY_IP"
-echo "   NFS Share: $NFS_SHARE"
-echo "   Domain: $DOMAIN_NAME"
-echo ""
-read -p "✅ Continue with deployment? (y/N): " -n 1 -r
-echo ""
-
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Deployment cancelled"
-    exit 1
-fi
-
-echo "📦 Installing system packages..."
-apt update && apt upgrade -y
-apt install -y python3 python3-pip python3-venv git nginx supervisor sqlite3 nfs-common ufw
-
-echo "👤 Creating application user..."
-useradd -m -s /bin/bash familybook || true
-usermod -aG www-data familybook
-
-echo "📁 Setting up NFS mount..."
-mkdir -p /var/familybook/uploads
-
-# Test NFS mount
-echo "🔍 Testing NFS connection..."
-if mount -t nfs -o soft,timeo=10,retrans=1 $SYNOLOGY_IP:$NFS_SHARE /var/familybook/uploads; then
-    echo "✅ NFS mount successful"
-    umount /var/familybook/uploads
-else
-    echo "❌ Failed to mount NFS share. Please check:"
-    echo "   - Synology NFS service is enabled"
-    echo "   - Share permissions allow this server's IP"
-    echo "   - Network connectivity to Synology"
-    exit 1
-fi
-
-# Add permanent mount
-if ! grep -q "$SYNOLOGY_IP:$NFS_SHARE" /etc/fstab; then
-    echo "$SYNOLOGY_IP:$NFS_SHARE /var/familybook/uploads nfs defaults,_netdev 0 0" >> /etc/fstab
-fi
-mount /var/familybook/uploads
-
-echo "📥 Cloning repository..."
-sudo -u familybook bash -c "
-    cd /home/familybook
-    git clone https://github.com/spinnelein/familybook.git || true
-    cd familybook
-    git pull origin main
-"
-
-echo "🐍 Setting up Python environment..."
-sudo -u familybook bash -c "
-    cd /home/familybook/familybook
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-"
-
-echo "⚙️ Creating environment configuration..."
-SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
-sudo -u familybook tee /home/familybook/familybook/.env << EOF
-FAMILYBOOK_UPLOADS_PATH=/var/familybook/uploads
-FAMILYBOOK_DATABASE_PATH=/home/familybook/familybook/familybook.db
-FAMILYBOOK_SECRET_KEY=$SECRET_KEY
-FLASK_ENV=production
-FLASK_APP=app.py
-EOF
-
-echo "🗃️ Initializing database..."
-sudo -u familybook bash -c "
-    cd /home/familybook/familybook
-    source venv/bin/activate
-    source .env
-    python3 -c 'from app import init_db; init_db()'
-"
-
-echo "🔐 Setting permissions..."
-chown -R familybook:www-data /home/familybook/familybook
-chmod -R 755 /home/familybook/familybook
-chmod 600 /home/familybook/familybook/.env
-chown -R familybook:www-data /var/familybook/uploads
-chmod -R 775 /var/familybook/uploads
-
-echo "🌐 Configuring Nginx..."
-cat > /etc/nginx/sites-available/familybook << EOF
-server {
-    listen 80;
-    server_name $DOMAIN_NAME;
-
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-
-    client_max_body_size 100M;
-
-    location /static/ {
-        alias /home/familybook/familybook/static/;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    location /uploads/ {
-        alias /var/familybook/uploads/;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 75s;
-    }
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
-EOF
 
-ln -sf /etc/nginx/sites-available/familybook /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
 
-echo "🔄 Configuring Supervisor..."
-cat > /etc/supervisor/conf.d/familybook.conf << EOF
-[program:familybook]
-command=/home/familybook/familybook/venv/bin/python app.py
-directory=/home/familybook/familybook
-user=familybook
-environment=PATH="/home/familybook/familybook/venv/bin"
-autostart=true
-autorestart=true
-redirect_stderr=true
-stdout_logfile=/var/log/familybook.log
-stdout_logfile_maxbytes=50MB
-stdout_logfile_backups=5
-EOF
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
 
-supervisorctl reread
-supervisorctl update
-supervisorctl start familybook
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-echo "🔥 Configuring firewall..."
-ufw --force enable
-ufw allow ssh
-ufw allow 'Nginx Full'
+# Function to run sudo commands with password
+run_sudo() {
+    echo "$SUDO_PASSWORD" | sudo -S "$@"
+}
 
-echo "📋 Creating backup script..."
-cat > /usr/local/bin/backup-familybook << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/var/backups/familybook"
-DATE=$(date +%Y%m%d_%H%M%S)
+# Start deployment
+print_status "Starting FamilyBook deployment..."
+echo "=================================="
 
-mkdir -p $BACKUP_DIR
-sqlite3 /home/familybook/familybook/familybook.db ".backup $BACKUP_DIR/familybook_$DATE.db"
-find $BACKUP_DIR -name "familybook_*.db" -mtime +7 -delete
-echo "Backup completed: $BACKUP_DIR/familybook_$DATE.db"
-EOF
+# Navigate to project directory
+cd "$PROJECT_DIR" || {
+    print_error "Cannot navigate to project directory: $PROJECT_DIR"
+    exit 1
+}
 
-chmod +x /usr/local/bin/backup-familybook
-(crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/backup-familybook") | crontab -
+print_status "Current directory: $(pwd)"
 
-echo ""
-echo "🎉 Deployment Complete!"
-echo "======================"
-echo ""
-echo "✅ Familybook is now running at: http://$DOMAIN_NAME"
-echo "✅ Media uploads will be stored on Synology NAS"
-echo "✅ Daily database backups are configured"
-echo ""
-echo "🔧 Next Steps:"
-echo "1. Visit http://$DOMAIN_NAME and click the Admin link"
-echo "2. Configure Google OAuth credentials in Settings"
-echo "3. Create admin users and configure the system"
-echo ""
-echo "📊 Management Commands:"
-echo "   sudo supervisorctl status familybook    # Check status"
-echo "   sudo supervisorctl restart familybook   # Restart app"
-echo "   sudo tail -f /var/log/familybook.log   # View logs"
-echo "   sudo /usr/local/bin/backup-familybook  # Manual backup"
-echo ""
-echo "🔒 Consider setting up SSL/HTTPS with:"
-echo "   sudo apt install certbot python3-certbot-nginx"
-echo "   sudo certbot --nginx -d $DOMAIN_NAME"
-echo ""
+# Check git status
+print_status "Checking git status..."
+git status --porcelain
+
+# Fix git permissions before stashing
+print_status "Fixing git permissions..."
+run_sudo chown -R aaron:aaron .git
+run_sudo chmod -R 755 .git
+
+# Stash any local changes
+if [[ -n $(git status --porcelain) ]]; then
+    print_warning "Local changes detected. Stashing them..."
+    git stash push -m "Auto-stash before deployment $(date)"
+    print_success "Local changes stashed"
+fi
+
+# Pull latest changes from GitHub
+print_status "Pulling latest changes from GitHub..."
+git fetch origin
+git pull origin main || {
+    print_error "Failed to pull from GitHub"
+    exit 1
+}
+print_success "Successfully pulled latest changes"
+
+# Show what changed
+print_status "Recent commits:"
+git log --oneline -5
+
+# Set file permissions
+print_status "Setting file permissions..."
+
+# Set ownership to www-data for web files
+run_sudo chown -R www-data:www-data .
+
+# Set proper permissions for Python files
+run_sudo chmod 755 *.py
+
+# Set proper permissions for templates
+run_sudo chmod -R 755 templates/
+
+# Set proper permissions for static files
+run_sudo chmod -R 755 static/
+
+# Make sure the database is writable by www-data
+if [[ -f "familybook.db" ]]; then
+    run_sudo chmod 664 familybook.db
+    run_sudo chown www-data:www-data familybook.db
+    print_success "Database permissions updated"
+fi
+
+# Make sure uploads directory exists and is writable
+mkdir -p static/uploads
+run_sudo chown -R www-data:www-data static/uploads
+run_sudo chmod -R 755 static/uploads
+
+print_success "File permissions updated"
+
+# Initialize database (in case new tables were added)
+print_status "Initializing database (checking for new tables)..."
+run_sudo -u www-data ./venv/bin/python3 -c "
+from app import init_db
+try:
+    init_db()
+    print('Database initialization completed')
+except Exception as e:
+    print(f'Database initialization error (may be normal): {e}')
+"
+
+# Restart the familybook service
+print_status "Restarting $SERVICE_NAME service..."
+run_sudo systemctl restart "$SERVICE_NAME" || {
+    print_error "Failed to restart $SERVICE_NAME service"
+    exit 1
+}
+
+# Wait a moment for service to start
+sleep 2
+
+# Check service status
+print_status "Checking service status..."
+if run_sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+    print_success "$SERVICE_NAME service is running"
+    run_sudo systemctl status "$SERVICE_NAME" --no-pager -l
+else
+    print_error "$SERVICE_NAME service failed to start"
+    print_error "Service logs:"
+    run_sudo journalctl -u "$SERVICE_NAME" -n 10 --no-pager
+    exit 1
+fi
+
+# Final status
+print_success "Deployment completed successfully!"
+echo "=================================="
+print_status "FamilyBook has been updated and restarted"
+print_status "Service status: $(run_sudo systemctl is-active $SERVICE_NAME)"
+print_status "You can access the application at: http://home.slugranch.org/familybook/"
+
+# Show any stashed changes reminder
+if git stash list | grep -q "Auto-stash before deployment"; then
+    print_warning "Reminder: Local changes were stashed. Use 'git stash pop' to restore them if needed."
+fi
