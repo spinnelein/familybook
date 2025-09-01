@@ -38,7 +38,7 @@ def get_auth_url(redirect_uri):
     flow = create_oauth_flow(redirect_uri)
     auth_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true',
+        include_granted_scopes='false',  # Prevent scope mixing
         prompt='consent'
     )
     # Store the flow for later use
@@ -57,8 +57,16 @@ def handle_oauth_callback(authorization_response, redirect_uri):
     # Exchange authorization code for tokens
     flow.fetch_token(authorization_response=authorization_response)
     
-    # Save credentials
+    # Validate that we got the expected scopes
     creds = flow.credentials
+    if hasattr(creds, 'scopes') and creds.scopes:
+        expected_scopes = set(SCOPES)
+        actual_scopes = set(creds.scopes)
+        if not expected_scopes.issubset(actual_scopes):
+            missing_scopes = expected_scopes - actual_scopes
+            print(f"Warning: Missing expected scopes: {missing_scopes}")
+    
+    # Save credentials
     with open(TOKEN_FILE, 'wb') as token:
         pickle.dump(creds, token)
     
