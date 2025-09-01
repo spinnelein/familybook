@@ -14,9 +14,32 @@ from authlib.integrations.flask_client import OAuth
 import email.utils
 
 app = Flask(__name__)
+
+# Add request debugging for Google Photos endpoints
+def write_debug_log(message):
+    """Write debug message to file"""
+    try:
+        with open('/tmp/google_photos_debug.log', 'a') as f:
+            import datetime
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"[{timestamp}] {message}\n")
+    except PermissionError:
+        # Fallback to print if can't write to file
+        print(f"DEBUG: {message}")
+    except Exception as e:
+        # Just print the message if any other error occurs
+        print(f"DEBUG: {message} (log error: {e})")
+
+@app.before_request
+def debug_google_photos_requests():
+    if '/api/google-photos/' in request.path or '/admin/google-photos/' in request.path:
+        msg = f"DEBUG REQUEST: {request.method} {request.path} from {request.remote_addr}"
+        print(msg)
+        write_debug_log(msg)
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max upload size for videos
 app.config['DATABASE'] = 'familybook.db'
 app.secret_key = 'your-secret-key'
 
@@ -282,6 +305,13 @@ def init_db():
             updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id),
             UNIQUE(user_id)
+        )''')
+        
+        # Add about_us table for about us page content
+        db.execute('''CREATE TABLE IF NOT EXISTS about_us (
+            id INTEGER PRIMARY KEY,
+            content TEXT NOT NULL,
+            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         
         # Insert default SMTP settings if they don't exist
@@ -1212,7 +1242,32 @@ def oauth_login():
     redirect_uri = get_setting('oauth_redirect_uri', url_for('oauth_callback', _external=True))
     return oauth.google.authorize_redirect(redirect_uri)
 
-# OAuth callback route
+# Google Photos OAuth callback route (separate from admin console)
+@app.route('/admin/google-photos-clean/callback')
+def google_photos_clean_callback():
+    """Handle clean Google Photos OAuth callback"""
+    state_file = f'/tmp/oauth_flow_state_spinnelein_at_gmail_com.json'
+    if os.path.exists(state_file):
+        try:
+            authorization_response_url = request.url
+            success = google_photos_picker.handle_oauth_callback(authorization_response_url)
+            
+            if success:
+                flash('Google Photos authenticated successfully for spinnelein@gmail.com!', 'success')
+            else:
+                flash('Google Photos authentication failed.', 'danger')
+                
+            return redirect(url_for('admin_console'))
+            
+        except google_photos_picker.GooglePhotosPickerError as e:
+            print(f"Clean Google Photos callback error: {e}")
+            flash('Authentication failed.', 'danger')
+            return redirect(url_for('admin_console'))
+    else:
+        flash('Invalid Google Photos authentication state.', 'danger')
+        return redirect(url_for('admin_console'))
+
+# OAuth callback route (for admin console authentication only)
 @app.route('/admin/oauth/callback')
 def oauth_callback():
     setup_oauth()
@@ -1223,42 +1278,11 @@ def oauth_callback():
     try:
         token = oauth.google.authorize_access_token()
         
-        # Check if this is for Google Photos authentication
-        oauth_purpose = session.pop('oauth_purpose', None)
-        oauth_state = session.pop('oauth_state', None)
+        # Clear any leftover Google Photos session data (shouldn't be present for admin auth)
+        session.pop('oauth_purpose', None)
+        session.pop('oauth_state', None)
         
-        if oauth_purpose == 'google_photos':
-            # Verify state parameter for security
-            received_state = request.args.get('state')
-            if received_state != oauth_state:
-                flash('Invalid state parameter. Possible security issue.', 'danger')
-                return redirect(url_for('admin_console'))
-            
-            # Handle Google Photos OAuth callback using Flow
-            from google_photos import create_oauth_flow, create_credentials_from_token_info, save_credentials
-            
-            try:
-                flow = create_oauth_flow()
-                flow.fetch_token(authorization_response=request.url)
-                
-                # Create credentials from token
-                creds = create_credentials_from_token_info({
-                    'access_token': flow.credentials.token,
-                    'refresh_token': flow.credentials.refresh_token
-                })
-                
-                # Save credentials
-                save_credentials(creds)
-                
-                flash('Google Photos authentication successful!', 'success')
-                return redirect(url_for('admin_settings'))
-                
-            except Exception as e:
-                print(f"Google Photos OAuth callback error: {e}")
-                flash(f'Google Photos authentication failed: {str(e)}', 'danger')
-                return redirect(url_for('admin_console'))
-        
-        # Regular admin authentication
+        # Handle admin console authentication
         user_info = token.get('userinfo')
         
         if user_info:
@@ -1291,32 +1315,33 @@ def oauth_callback():
         flash('Authentication failed.', 'danger')
         return redirect(url_for('admin_login'))
 
-# Google Photos OAuth routes
+# Legacy Google Photos OAuth route (DISABLED - use google-photos-clean instead)
 @app.route('/admin/google-photos/auth')
-def google_photos_auth():
-    """Initiate Google Photos OAuth flow"""
-    from google_photos import create_oauth_flow
-    
+def google_photos_auth_legacy():
+    """Legacy Google Photos OAuth flow - redirects to new clean implementation"""
+    print(f"DEBUG: Legacy google_photos_auth route called - redirecting to clean implementation")
+    flash('Redirecting to updated Google Photos authentication...', 'info')
+    return redirect(url_for('google_photos_clean_auth'))
+
+# New clean Google Photos authentication
+@app.route('/admin/google-photos-clean/auth')
+def google_photos_clean_auth():
+    """Initiate clean Google Photos OAuth flow for spinnelein@gmail.com"""
     try:
-        # Create OAuth flow for Google Photos
-        flow = create_oauth_flow()
+        print(f"DEBUG: google_photos_clean_auth called")
+        auth_url = google_photos_picker.get_auth_url()
+        print(f"DEBUG: Clean Google Photos auth URL: {auth_url}")
+        return redirect(auth_url)
         
-        # Store in session that this is for Google Photos
-        session['oauth_purpose'] = 'google_photos'
-        session['oauth_state'] = os.urandom(16).hex()  # Generate random state for security
-        
-        # Generate authorization URL
-        authorization_url, state = flow.authorization_url(
-            access_type='offline',  # Get refresh token
-            include_granted_scopes='true',
-            state=session['oauth_state']
-        )
-        
-        return redirect(authorization_url)
-        
-    except Exception as e:
-        print(f"Google Photos OAuth setup error: {e}")
+    except google_photos_picker.GooglePhotosPickerError as e:
+        print(f"DEBUG: Clean Google Photos OAuth GooglePhotosPickerError: {e}")
         flash('Failed to initiate Google Photos authentication.', 'danger')
+        return redirect(url_for('admin_console'))
+    except Exception as e:
+        print(f"DEBUG: Clean Google Photos OAuth unexpected error: {e}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
+        flash(f'Failed to initiate Google Photos authentication: {str(e)}', 'danger')
         return redirect(url_for('admin_console'))
 
 # Admin logout route
@@ -1503,6 +1528,35 @@ def admin_settings():
     email_stats = get_daily_email_stats()
     
     return render_template('admin_settings.html', settings=settings, email_stats=email_stats)
+
+# About Us Management
+@app.route('/admin/about-us', methods=['GET', 'POST'])
+def admin_about_us():
+    # Check if admin authentication is required
+    if requires_admin_auth():
+        return redirect_to_admin_login()
+    
+    db = get_db()
+    
+    if request.method == 'POST':
+        content = request.form['content']
+        
+        # Update or insert the about us content
+        existing = db.execute('SELECT id FROM about_us WHERE id = 1').fetchone()
+        if existing:
+            db.execute('UPDATE about_us SET content = ?, updated = CURRENT_TIMESTAMP WHERE id = 1', (content,))
+        else:
+            db.execute('INSERT INTO about_us (id, content) VALUES (1, ?)', (content,))
+        db.commit()
+        
+        flash('About Us page updated successfully!', 'success')
+        return redirect(url_for('admin_about_us'))
+    
+    # Get current content
+    about_content = db.execute('SELECT content FROM about_us WHERE id = 1').fetchone()
+    content = about_content[0] if about_content else ""
+    
+    return render_template('admin_about_us_edit.html', content=content)
 
 # Email Templates Management
 @app.route('/admin/email-templates')
@@ -2321,17 +2375,93 @@ def toggle_heart(magic_token):
 def posts_no_token():
     abort(403)
 
-# Google Photos Picker API (2024) - Server-side implementation
+@app.route('/about')
+def about_us():
+    """Display the about us page"""
+    db = get_db()
+    about_content = db.execute('SELECT content FROM about_us WHERE id = 1').fetchone()
+    
+    if about_content:
+        content = about_content[0]
+    else:
+        content = "<p>Welcome to our family photo sharing site!</p><p>This page can be edited by administrators.</p>"
+    
+    return render_template('about_us.html', content=content)
+
+# Google Photos OAuth Routes
+@app.route('/google-photos/auth')
+def google_photos_auth():
+    """Initiate Google Photos OAuth flow"""
+    try:
+        # Build the redirect URI
+        redirect_uri = url_for('google_photos_callback', _external=True)
+        
+        # Get the authorization URL
+        from google_photos import get_auth_url
+        auth_url, state = get_auth_url(redirect_uri)
+        
+        # Store state in session for security
+        session['oauth_state'] = state
+        
+        # Redirect user to Google's OAuth consent screen
+        return redirect(auth_url)
+    except Exception as e:
+        return f"Error initiating OAuth: {str(e)}", 500
+
+@app.route('/google-photos/callback')
+def google_photos_callback():
+    """Handle Google Photos OAuth callback"""
+    try:
+        # Get the state and code from the callback
+        state = request.args.get('state')
+        code = request.args.get('code')
+        error = request.args.get('error')
+        
+        if error:
+            return f"OAuth error: {error}", 400
+        
+        # Verify state matches
+        if state != session.get('oauth_state'):
+            return "Invalid OAuth state", 400
+        
+        # Build the redirect URI (must match exactly)
+        redirect_uri = url_for('google_photos_callback', _external=True)
+        
+        # Handle the OAuth callback
+        from google_photos import handle_oauth_callback
+        creds = handle_oauth_callback(request.url, redirect_uri)
+        
+        # Clear the state from session
+        session.pop('oauth_state', None)
+        
+        # Redirect to a success page or back to the create post page
+        return redirect(url_for('create_post'))
+    except Exception as e:
+        return f"Error handling OAuth callback: {str(e)}", 500
+
+
+# Google Photos Picker API Routes
 @app.route('/api/google-photos/create-session', methods=['POST'])
 def create_picker_session_endpoint():
     """Create a Google Photos Picker session"""
     try:
+        from google_photos import is_authenticated
+        
+        # Check if authenticated
+        if not is_authenticated():
+            auth_url = url_for('google_photos_auth', _external=True)
+            return jsonify({
+                'success': False,
+                'error': 'Google Photos authentication required',
+                'auth_required': True,
+                'auth_url': auth_url
+            }), 401
+        
         # Use the updated create_picker_session function
         picker_session = create_picker_session()
         
         session_id = picker_session.get('id')
         picker_uri = picker_session.get('pickerUri')
-        
         
         if not session_id or not picker_uri:
             return jsonify({
@@ -2346,23 +2476,21 @@ def create_picker_session_endpoint():
         })
         
     except Exception as e:
-        error_msg = str(e)
-        print(f"Error creating picker session: {error_msg}")
+        print(f"Error creating picker session: {str(e)}")
         
-        # Check if this is an authentication error
-        if "authentication required" in error_msg.lower():
+        # If authentication is required, return appropriate response
+        if "Authentication required" in str(e):
             auth_url = url_for('google_photos_auth', _external=True)
             return jsonify({
                 'success': False,
                 'error': 'Google Photos authentication required',
                 'auth_required': True,
-                'auth_url': auth_url,
-                'message': 'Please authenticate with Google Photos to use the photo picker.'
+                'auth_url': auth_url
             }), 401
         
         return jsonify({
             'success': False,
-            'error': error_msg
+            'error': str(e)
         }), 500
 
 @app.route('/api/google-photos/poll-session/<session_id>', methods=['GET'])
@@ -2586,44 +2714,6 @@ def download_selected_media():
             'success': False,
             'error': str(e)
         }), 500
-
-@app.route('/test-polling')
-def test_polling():
-    return '''
-    <!DOCTYPE html>
-    <html><head><title>Test Polling</title></head><body>
-    <h1>Test Google Photos Polling</h1>
-    <button onclick="testPolling()">Test Poll Session</button>
-    <div id="results"></div>
-    <script>
-        async function testPolling() {
-            const sessionId = 'e94bd304-1ab4-440f-a4bc-54094baae781';
-            try {
-                console.log('Testing polling...');
-                const response = await fetch(`/api/google-photos/poll-session/${sessionId}`);
-                const pollData = await response.json();
-                console.log('Poll response:', pollData);
-                document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(pollData, null, 2) + '</pre>';
-                
-                if (pollData.selectedItems && pollData.selectedItems.length > 0) {
-                    console.log('Testing download...');
-                    const downloadResponse = await fetch('/api/google-photos/download-selected', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ selectedItems: pollData.selectedItems })
-                    });
-                    const downloadData = await downloadResponse.json();
-                    console.log('Download response:', downloadData);
-                    document.getElementById('results').innerHTML += '<h3>Download:</h3><pre>' + JSON.stringify(downloadData, null, 2) + '</pre>';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('results').innerHTML = 'Error: ' + error.message;
-            }
-        }
-    </script>
-    </body></html>
-    '''
 
 if __name__ == "__main__":
     init_db()

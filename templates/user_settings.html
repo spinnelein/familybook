@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Preferences - Familybook</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin: 0 0 10px 0;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .user-info {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+        
+        .preferences-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            color: #1e293b;
+            margin: 0 0 25px 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .preference-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        
+        .preference-item:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+        
+        .preference-checkbox {
+            margin-top: 2px;
+        }
+        
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .preference-content {
+            flex: 1;
+        }
+        
+        .preference-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 5px 0;
+            font-size: 1.1rem;
+        }
+        
+        .preference-description {
+            color: #64748b;
+            margin: 0;
+            line-height: 1.5;
+        }
+        
+        .preference-icon {
+            font-size: 1.5rem;
+            margin-top: 2px;
+        }
+        
+        .magic-link-section {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #3b82f6;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .magic-link-section h3 {
+            color: #1e40af;
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+        }
+        
+        .magic-link {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #3b82f6;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin: 10px 0;
+            color: #1e40af;
+        }
+        
+        .magic-link-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .btn-outline:hover {
+            background: #3b82f6;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .form-actions {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .flash-messages {
+            margin-bottom: 30px;
+        }
+        
+        .flash-messages ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .flash-messages li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .flash-messages .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #22c55e;
+        }
+        
+        .flash-messages .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        
+        .flash-messages .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        
+        @media (max-width: 600px) {
+            .preference-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .magic-link-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>‚öôÔ∏è Email Preferences</h1>
+            <div class="user-info">Hi {{ user['name'] }}! Manage your email notification settings below.</div>
+        </div>
+        
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul>
+                  {% for category, message in messages %}
+                    <li class="alert-{{ category }}">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="magic-link-section">
+            <h3>= Your Personal Familybook Link</h3>
+            <p style="margin: 0 0 10px 0; color: #64748b;">Bookmark this link to always access family posts:</p>
+            <div class="magic-link">{{ url_for('posts', magic_token=user['magic_token'], _external=True) }}</div>
+            <div class="magic-link-buttons">
+                <a href="{{ url_for('posts', magic_token=user['magic_token']) }}" class="btn btn-primary">
+                    =÷ View Posts
+                </a>
+                {% if user['is_admin'] %}
+                    <a href="{{ url_for('create_post', magic_token=user['magic_token']) }}" class="btn btn-outline">
+                         Create Post
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <form method="POST" action="{{ url_for('update_user_settings', magic_token=user['magic_token']) }}">
+            <div class="preferences-section">
+                <h2 class="section-title">= Email Notifications</h2>
+                <p style="color: #64748b; margin-bottom: 25px;">Choose which email notifications you'd like to receive. All emails will include your personal magic link to easily access the familybook.</p>
+                
+                <div class="preference-item">
+                    <div class="preference-icon">=K</div>
+                    <div class="preference-content">
+                        <h3 class="preference-title">Welcome Emails</h3>
+                        <p class="preference-description">Receive welcome emails when new family members join the familybook.</p>
+                    </div>
+                    <div class="preference-checkbox">
+                        <input type="checkbox" name="account_created" id="account_created" 
+                               {% if prefs['account_created'] %}checked{% endif %}>
+                    </div>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-icon">=›</div>
+                    <div class="preference-content">
+                        <h3 class="preference-title">New Posts</h3>
+                        <p class="preference-description">Get notified when someone shares a new post, photo, or story with the family.</p>
+                    </div>
+                    <div class="preference-checkbox">
+                        <input type="checkbox" name="new_post" id="new_post" 
+                               {% if prefs['new_post'] %}checked{% endif %}>
+                    </div>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-icon">=®</div>
+                    <div class="preference-content">
+                        <h3 class="preference-title">Major Events</h3>
+                        <p class="preference-description">Receive notifications for important family events, announcements, and major updates that everyone should see.</p>
+                    </div>
+                    <div class="preference-checkbox">
+                        <input type="checkbox" name="major_event" id="major_event" 
+                               {% if prefs['major_event'] %}checked{% endif %}>
+                    </div>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-icon">=¨</div>
+                    <div class="preference-content">
+                        <h3 class="preference-title">Comment Replies</h3>
+                        <p class="preference-description">Get notified when someone replies to your comments on posts.</p>
+                    </div>
+                    <div class="preference-checkbox">
+                        <input type="checkbox" name="comment_reply" id="comment_reply" 
+                               {% if prefs['comment_reply'] %}checked{% endif %}>
+                    </div>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-icon">=</div>
+                    <div class="preference-content">
+                        <h3 class="preference-title">Magic Link Reminders</h3>
+                        <p class="preference-description">Receive occasional reminders with your personal familybook link, in case you misplace it.</p>
+                    </div>
+                    <div class="preference-checkbox">
+                        <input type="checkbox" name="magic_link_reminder" id="magic_link_reminder" 
+                               {% if prefs['magic_link_reminder'] %}checked{% endif %}>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">=æ Save Preferences</button>
+                    <a href="{{ url_for('posts', magic_token=user['magic_token']) }}" class="btn btn-secondary">ê Back to Posts</a>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // Add click handlers to preference items to toggle checkboxes
+        document.querySelectorAll('.preference-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

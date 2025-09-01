@@ -18,3 +18,7 @@ token.json
 token.pickle
 photoslibrary_v1_discovery.json
 claude_settings.local.json
+*.db.backup
+static/uploads/
+*.backup
+.claude/settings.local.json

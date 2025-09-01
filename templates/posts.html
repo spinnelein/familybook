@@ -206,13 +206,46 @@
         }
         
         /* Responsive Design */
+        
+        /* Tablet styles */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .sidebar {
+                width: 240px;
+            }
+            
+            .post {
+                padding: 25px;
+            }
+            
+            .header {
+                padding: 25px;
+            }
+        }
+        
+        /* Mobile styles */
         @media (max-width: 768px) {
             body {
-                padding: 15px;
+                padding: 10px;
+            }
+            
+            /* Stack sidebar below content on mobile */
+            .main-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .sidebar {
+                width: 100%;
+                order: 2; /* Put sidebar after content */
+            }
+            
+            .content-area {
+                order: 1; /* Put content first */
             }
             
             .header {
                 padding: 20px;
+                margin-bottom: 20px;
             }
             
             .header h1 {
@@ -221,6 +254,7 @@
             
             .post {
                 padding: 20px;
+                margin-bottom: 20px;
             }
             
             .post h2 {
@@ -229,12 +263,70 @@
             
             .post-content {
                 font-size: 1rem;
+                line-height: 1.6;
+            }
+            
+            /* Make images full width on mobile */
+            .post-content img,
+            .media-container img {
+                max-width: 100% !important;
             }
             
             .post-meta {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 10px;
+            }
+            
+            .post-meta-info {
+                text-align: left;
+                width: 100%;
+            }
+            
+            /* Reduce margins and padding for mobile */
+            .posts-container {
+                gap: 20px;
+            }
+            
+            /* Mobile sidebar styling */
+            .month-nav {
+                margin-bottom: 15px !important;
+            }
+            
+            .month-nav h3 {
+                font-size: 1.1rem;
+                margin-bottom: 10px;
+            }
+        }
+        
+        /* Extra small mobile screens */
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .post {
+                padding: 15px;
+            }
+            
+            .post h2 {
+                font-size: 1.3rem;
+            }
+            
+            .post-content {
+                font-size: 0.95rem;
+            }
+            
+            .welcome-message {
+                font-size: 1rem;
             }
         }
 
@@ -757,9 +849,17 @@
 </head>
 <body>
     <div class="header">
-        <h1>🐌 Slugranch Familybook</h1>
+        <h1>🐌 Fernwood Familybook</h1>
         {% if user %}
             <p class="welcome-message">Welcome, {{ user.name }}! Enjoy browsing our family memories.</p>
+            <div style="margin-top: 15px;">
+                <a href="{{ url_for('user_settings', magic_token=user.magic_token) }}" 
+                   style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
+                   onmouseover="this.style.background='#2563eb'"
+                   onmouseout="this.style.background='#3b82f6'">
+                    ⚙️ Email Settings
+                </a>
+            </div>
         {% else %}
             <p class="welcome-message">Welcome to our family photo gallery</p>
         {% endif %}
@@ -948,6 +1048,13 @@
                 <h3>📸 Photo Stream</h3>
                 <a href="{{ url_for('photo_stream', magic_token=user.magic_token) }}" class="month-link photo-stream-link">
                     🖼️ View All Photos
+                </a>
+            </div>
+            
+            <div class="month-nav" style="margin-bottom: 20px;">
+                <h3>ℹ️ About Us</h3>
+                <a href="{{ url_for('about_us') }}" class="month-link" target="_blank">
+                    📖 Learn More About Us
                 </a>
             </div>
             

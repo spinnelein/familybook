@@ -333,7 +333,7 @@
             const loadingDiv = document.getElementById('loading-' + templateId);
             loadingDiv.style.display = 'block';
             
-            fetch('/admin/email-templates/test/' + templateId, {
+            fetch('{{ url_for("test_email_template", template_id=0) }}'.replace('0', templateId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -357,7 +357,7 @@
         
         function createDefaultTemplates() {
             if (confirm('This will create default email templates. Continue?')) {
-                fetch('/admin/email-templates/create-defaults', {
+                fetch('{{ url_for("create_default_email_templates") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
