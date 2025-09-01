@@ -2792,16 +2792,20 @@ def admin_activity_log():
 @app.route('/toggle-heart/<magic_token>', methods=['POST'])
 def toggle_heart(magic_token):
     """Toggle heart/like reaction for a post"""
+    print(f"toggle_heart called with magic_token: {magic_token}")
     try:
         # Verify user
         db = get_db()
         user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
         if not user:
+            print(f"No user found for magic_token: {magic_token}")
             return jsonify({'error': 'Invalid user token'}), 403
         
         # Get post ID
         post_id = request.form.get('post_id')
+        print(f"Received post_id: {post_id}")
         if not post_id:
+            print("Missing post_id in form data")
             return jsonify({'error': 'Missing post ID'}), 400
         
         # Check if post exists
