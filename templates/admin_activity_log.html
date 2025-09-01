@@ -175,7 +175,9 @@
         
         .activity-visit { background: #dbeafe; color: #1e40af; }
         .activity-like { background: #fce7f3; color: #be185d; }
+        .activity-unlike { background: #fee2e2; color: #dc2626; }
         .activity-comment { background: #dcfce7; color: #166534; }
+        .activity-comment_reply { background: #ecfdf5; color: #065f46; }
         .activity-post_create { background: #fef3c7; color: #92400e; }
         .activity-post_view { background: #e5e7eb; color: #374151; }
         
@@ -329,7 +331,21 @@
                         </td>
                         <td>
                             <span class="activity-type activity-{{ activity.action_type }}">
-                                {{ activity.action_type.replace('_', ' ').title() }}
+                                {% if activity.action_type == 'comment_reply' %}
+                                    💬 Reply
+                                {% elif activity.action_type == 'comment' %}
+                                    💬 Comment
+                                {% elif activity.action_type == 'like' %}
+                                    ❤️ Like
+                                {% elif activity.action_type == 'unlike' %}
+                                    💔 Unlike
+                                {% elif activity.action_type == 'post_create' %}
+                                    ✍️ Create
+                                {% elif activity.action_type == 'visit' %}
+                                    👁️ Visit
+                                {% else %}
+                                    {{ activity.action_type.replace('_', ' ').title() }}
+                                {% endif %}
                             </span>
                         </td>
                         <td>

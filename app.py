@@ -2158,6 +2158,12 @@ def add_comment(magic_token):
                (post_id, user['id'], content, parent_comment_id))
     db.commit()
     
+    # Log comment activity
+    post = db.execute('SELECT title FROM posts WHERE id = ?', (post_id,)).fetchone()
+    if post:
+        action_type = 'comment_reply' if parent_comment_id else 'comment'
+        log_activity(action_type, user['id'], user['name'], post_id, post['title'], content[:200])
+    
     # Send reply notification email if this is a reply
     if parent_comment_id and get_setting('notifications_enabled', 'false').lower() == 'true':
         try:
