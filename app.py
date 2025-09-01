@@ -92,6 +92,11 @@ def url_for_with_prefix(endpoint, **values):
     from flask import url_for as flask_url_for
     # Generate the URL normally
     url = flask_url_for(endpoint, **values)
+    
+    # Don't modify external URLs (they already contain the full domain and path)
+    if values.get('_external', False) or url.startswith(('http://', 'https://')):
+        return url
+    
     # If we have a URL prefix and the URL doesn't already include it, prepend it
     if app.config['URL_PREFIX'] and not url.startswith(app.config['URL_PREFIX']):
         url = app.config['URL_PREFIX'] + url
