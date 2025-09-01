@@ -29,10 +29,6 @@ app.secret_key = os.environ.get('FAMILYBOOK_SECRET_KEY', 'your-secret-key-change
 app.config['URL_PREFIX'] = os.environ.get('FAMILYBOOK_URL_PREFIX', '')
 app.config['APPLICATION_ROOT'] = app.config['URL_PREFIX']
 
-# Fix session cookies for subdirectory deployment
-if app.config['URL_PREFIX']:
-    app.config['SESSION_COOKIE_PATH'] = app.config['URL_PREFIX']
-
 # If we have a URL prefix, we need to handle it properly
 if app.config['URL_PREFIX']:
     from werkzeug.middleware.dispatcher import DispatcherMiddleware
@@ -47,6 +43,15 @@ if app.config['URL_PREFIX']:
     app.wsgi_app = DispatcherMiddleware(simple, {
         app.config['URL_PREFIX']: app.wsgi_app
     })
+    
+    # Force session cookie path for subdirectory deployment
+    from flask.sessions import SecureCookieSessionInterface
+    
+    class CustomSessionInterface(SecureCookieSessionInterface):
+        def get_cookie_path(self, app):
+            return app.config.get('URL_PREFIX', '/')
+    
+    app.session_interface = CustomSessionInterface()
 
 # OAuth setup
 oauth = OAuth(app)
