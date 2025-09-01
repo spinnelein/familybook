@@ -2584,7 +2584,7 @@ def google_photos_callback():
         
         # Handle the OAuth callback
         from google_photos import handle_oauth_callback
-        creds = handle_oauth_callback(state, request.url, redirect_uri)
+        creds = handle_oauth_callback(request.url, redirect_uri)
         
         # Clear the state from session
         session.pop('oauth_state', None)

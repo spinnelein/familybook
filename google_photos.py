@@ -4,6 +4,9 @@ import requests
 import json
 import uuid
 
+# Allow HTTP for development/testing (disable HTTPS requirement)
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build_from_document
@@ -42,13 +45,14 @@ def get_auth_url(redirect_uri):
     oauth_flows[state] = flow
     return auth_url, state
 
-def handle_oauth_callback(state, authorization_response, redirect_uri):
+def handle_oauth_callback(authorization_response, redirect_uri):
     """Handle the OAuth callback and save credentials"""
-    if state not in oauth_flows:
-        raise ValueError("Invalid OAuth state")
-    
-    flow = oauth_flows[state]
-    flow.redirect_uri = redirect_uri
+    # Create a new flow for the callback (don't rely on stored state)
+    flow = Flow.from_client_secrets_file(
+        CREDENTIALS_FILE,
+        scopes=SCOPES,
+        redirect_uri=redirect_uri
+    )
     
     # Exchange authorization code for tokens
     flow.fetch_token(authorization_response=authorization_response)
@@ -57,9 +61,6 @@ def handle_oauth_callback(state, authorization_response, redirect_uri):
     creds = flow.credentials
     with open(TOKEN_FILE, 'wb') as token:
         pickle.dump(creds, token)
-    
-    # Clean up stored flow
-    del oauth_flows[state]
     
     return creds
 
