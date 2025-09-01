@@ -607,6 +607,18 @@ View the conversation: {{magic_link}}''',
             FOREIGN KEY (post_id) REFERENCES posts (id)
         )''')
         
+        # Add reactions table for likes/hearts
+        db.execute('''CREATE TABLE IF NOT EXISTS reactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            post_id INTEGER NOT NULL,
+            reaction_type TEXT DEFAULT 'heart',  -- 'heart', 'like', etc.
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (post_id) REFERENCES posts (id),
+            UNIQUE(user_id, post_id, reaction_type)
+        )''')
+        
         db.commit()
         
         # Extract images from existing posts and populate images table
@@ -2809,6 +2821,70 @@ def admin_activity_log():
     except Exception as e:
         print(f"Error loading activity log: {str(e)}")
         return "Error loading activity log", 500
+
+# Heart/Like Functionality Routes
+@app.route('/toggle-heart/<magic_token>', methods=['POST'])
+def toggle_heart(magic_token):
+    """Toggle heart/like reaction for a post"""
+    try:
+        # Verify user
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+        if not user:
+            return jsonify({'error': 'Invalid user token'}), 403
+        
+        # Get post ID
+        post_id = request.form.get('post_id')
+        if not post_id:
+            return jsonify({'error': 'Missing post ID'}), 400
+        
+        # Check if post exists
+        post = db.execute('SELECT * FROM posts WHERE id = ?', (post_id,)).fetchone()
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+        
+        # Check if user already hearted this post
+        existing_reaction = db.execute(
+            'SELECT * FROM reactions WHERE user_id = ? AND post_id = ? AND reaction_type = ?',
+            (user['id'], post_id, 'heart')
+        ).fetchone()
+        
+        if existing_reaction:
+            # Remove heart
+            db.execute(
+                'DELETE FROM reactions WHERE user_id = ? AND post_id = ? AND reaction_type = ?',
+                (user['id'], post_id, 'heart')
+            )
+            hearted = False
+            # Log unlike activity
+            log_activity('unlike', user['id'], user['name'], post_id, post['title'])
+        else:
+            # Add heart
+            db.execute(
+                'INSERT INTO reactions (user_id, post_id, reaction_type) VALUES (?, ?, ?)',
+                (user['id'], post_id, 'heart')
+            )
+            hearted = True
+            # Log like activity
+            log_activity('like', user['id'], user['name'], post_id, post['title'])
+        
+        db.commit()
+        
+        # Get updated count
+        count = db.execute(
+            'SELECT COUNT(*) as count FROM reactions WHERE post_id = ? AND reaction_type = ?',
+            (post_id, 'heart')
+        ).fetchone()['count']
+        
+        return jsonify({
+            'success': True,
+            'hearted': hearted,
+            'count': count
+        })
+        
+    except Exception as e:
+        print(f"Error toggling heart: {e}")
+        return jsonify({'error': 'Server error'}), 500
 
 
 if __name__ == "__main__":
