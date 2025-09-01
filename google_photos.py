@@ -3,33 +3,80 @@ import pickle
 import requests
 import json
 
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build_from_document
 from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 
 SCOPES = [
     'https://www.googleapis.com/auth/photoslibrary.readonly',
     'https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata',
     'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
 ]
-CREDENTIALS_FILE = 'client_secret.json'  # Updated to use the correct file name
+CREDENTIALS_FILE = 'client_secret.json'
 TOKEN_FILE = 'token.pickle'
 DISCOVERY_DOC_FILE = 'photoslibrary_v1_discovery.json'
 
-def get_authenticated_service():
+def get_validated_credentials():
+    """Get credentials for Google Photos API"""
     creds = None
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'rb') as token:
             creds = pickle.load(token)
+    
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, 'wb') as token:
-            pickle.dump(creds, token)
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                print(f"Token refresh failed: {e}")
+                creds = None
+        
+        if not creds:
+            # For server environments, direct users to web-based OAuth
+            raise Exception("Google Photos authentication required. Please authenticate through the web interface.")
+        
+        if creds:
+            with open(TOKEN_FILE, 'wb') as token:
+                pickle.dump(creds, token)
+    
+    return creds
+
+def create_oauth_flow():
+    """Create OAuth flow for web application"""
+    return Flow.from_client_secrets_file(
+        CREDENTIALS_FILE,
+        scopes=SCOPES,
+        redirect_uri='http://home.slugranch.org/familybook/admin/oauth/callback'
+    )
+
+def save_credentials(creds):
+    """Save credentials to pickle file"""
+    with open(TOKEN_FILE, 'wb') as token:
+        pickle.dump(creds, token)
+
+def create_credentials_from_token_info(token_info):
+    """Create credentials object from token info received from OAuth callback"""
+    # Load client config to get client_id, client_secret, token_uri
+    with open(CREDENTIALS_FILE, 'r') as f:
+        client_config = json.load(f)
+    
+    web_config = client_config['web']
+    
+    creds = Credentials(
+        token=token_info.get('access_token'),
+        refresh_token=token_info.get('refresh_token'),
+        token_uri=web_config['token_uri'],
+        client_id=web_config['client_id'],
+        client_secret=web_config['client_secret'],
+        scopes=SCOPES
+    )
+    
+    return creds
+
+def get_authenticated_service():
+    creds = get_validated_credentials()
     
     # Try to use local discovery document first
     if os.path.exists(DISCOVERY_DOC_FILE):
@@ -179,19 +226,7 @@ class DirectAPIResponse:
 
 def create_picker_session():
     """Create a Google Photos Picker session using the correct API endpoint"""
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, 'rb') as token:
-            creds = pickle.load(token)
-    
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, 'wb') as token:
-            pickle.dump(creds, token)
+    creds = get_validated_credentials()
     
     # Create picker session using correct Photo Picker API endpoint
     headers = {
@@ -231,16 +266,7 @@ def create_picker_session():
 
 def poll_picker_session(session_id):
     """Poll a Google Photos Picker session for completion"""
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, 'rb') as token:
-            creds = pickle.load(token)
-    
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            raise Exception("No valid credentials for polling session")
+    creds = get_validated_credentials()
     
     headers = {
         'Authorization': f'Bearer {creds.token}',
@@ -270,16 +296,7 @@ def poll_picker_session(session_id):
 
 def get_picked_media_items(session_id):
     """Get picked media items from a Picker session using the correct API"""
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, 'rb') as token:
-            creds = pickle.load(token)
-    
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            raise Exception("No valid credentials for getting picked items")
+    creds = get_validated_credentials()
     
     headers = {
         'Authorization': f'Bearer {creds.token}',
