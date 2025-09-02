@@ -1176,7 +1176,7 @@
             console.log('Magic token:', '{{ user.magic_token if user else "NONE" }}');
             
             try {
-                const url = `/toggle-heart/{{ user.magic_token if user else '' }}`;
+                const url = `{{ url_for('toggle_heart', magic_token=user.magic_token) if user else '/toggle-heart/' }}`;
                 console.log('Fetch URL:', url);
                 
                 const response = await fetch(url, {
@@ -1189,9 +1189,21 @@
                 
                 console.log('Response status:', response.status);
                 console.log('Response ok:', response.ok);
+                console.log('Response headers:', response.headers);
                 
-                const data = await response.json();
-                console.log('Response data:', data);
+                const responseText = await response.text();
+                console.log('Raw response:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('Parsed response data:', data);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    console.error('Response was:', responseText);
+                    alert('Server returned invalid response: ' + responseText.substring(0, 100));
+                    return;
+                }
                 
                 if (data.error) {
                     console.error('Error:', data.error);
