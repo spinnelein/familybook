@@ -21,8 +21,14 @@ app.config['UPLOAD_FOLDER'] = os.environ.get('FAMILYBOOK_UPLOADS_PATH', 'static/
 # Handle uploads folder creation with better error handling
 upload_path = app.config['UPLOAD_FOLDER']
 if os.path.exists(upload_path):
-    if not os.path.isdir(upload_path):
-        # Path exists but is not a directory - remove it and create directory
+    # Check if it's a symlink (common for Synology/NAS setups)
+    if os.path.islink(upload_path):
+        if os.path.isdir(upload_path):
+            print(f"Using symlinked uploads directory: {upload_path} -> {os.readlink(upload_path)}")
+        else:
+            print(f"Warning: Symlink {upload_path} points to non-directory")
+    elif not os.path.isdir(upload_path):
+        # Path exists but is not a directory or symlink - remove it and create directory
         print(f"Warning: {upload_path} exists as a file, removing it to create directory")
         try:
             os.remove(upload_path)
@@ -30,18 +36,18 @@ if os.path.exists(upload_path):
         except Exception as e:
             print(f"Error removing file and creating directory: {e}")
             raise
-    # If it's already a directory, we're good
+    # If it's already a directory (or symlink to directory), we're good
 else:
-    # Path doesn't exist, create it
+    # Path doesn't exist, create it (only for non-symlink cases)
     try:
         os.makedirs(upload_path, exist_ok=True)
+        print(f"Created uploads directory: {upload_path}")
     except PermissionError as e:
         print(f"Permission error creating uploads folder: {e}")
-        print(f"Please ensure the application has write permissions to create {upload_path}")
-        raise
-    except Exception as e:
-        print(f"Error creating uploads folder: {e}")
-        raise
+        print(f"Please create the directory manually or set up symlink: {upload_path}")
+        print(f"For Synology: ln -sf /volume1/your-path {upload_path}")
+        # Don't raise - let the application start, admin can fix the symlink
+        pass
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
 app.config['DATABASE'] = os.environ.get('FAMILYBOOK_DATABASE_PATH', 'familybook.db')
