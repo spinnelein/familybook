@@ -17,22 +17,31 @@ app = Flask(__name__)
 
 # Configure uploads folder - can be overridden with environment variable for Synology mounting
 app.config['UPLOAD_FOLDER'] = os.environ.get('FAMILYBOOK_UPLOADS_PATH', 'static/uploads')
-try:
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-except FileExistsError:
-    # On Windows, this can happen even with exist_ok=True
-    # Check if it's actually a directory
-    if not os.path.isdir(app.config['UPLOAD_FOLDER']):
-        print(f"Error: {app.config['UPLOAD_FOLDER']} exists but is not a directory")
+
+# Handle uploads folder creation with better error handling
+upload_path = app.config['UPLOAD_FOLDER']
+if os.path.exists(upload_path):
+    if not os.path.isdir(upload_path):
+        # Path exists but is not a directory - remove it and create directory
+        print(f"Warning: {upload_path} exists as a file, removing it to create directory")
+        try:
+            os.remove(upload_path)
+            os.makedirs(upload_path, exist_ok=True)
+        except Exception as e:
+            print(f"Error removing file and creating directory: {e}")
+            raise
+    # If it's already a directory, we're good
+else:
+    # Path doesn't exist, create it
+    try:
+        os.makedirs(upload_path, exist_ok=True)
+    except PermissionError as e:
+        print(f"Permission error creating uploads folder: {e}")
+        print(f"Please ensure the application has write permissions to create {upload_path}")
         raise
-    # If it's a directory, continue normally
-except PermissionError as e:
-    print(f"Permission error creating uploads folder: {e}")
-    print(f"Please ensure the application has write permissions to create {app.config['UPLOAD_FOLDER']}")
-    raise
-except Exception as e:
-    print(f"Error creating uploads folder: {e}")
-    raise
+    except Exception as e:
+        print(f"Error creating uploads folder: {e}")
+        raise
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
 app.config['DATABASE'] = os.environ.get('FAMILYBOOK_DATABASE_PATH', 'familybook.db')
