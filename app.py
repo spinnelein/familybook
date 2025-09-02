@@ -1876,64 +1876,6 @@ You can update your notification preferences anytime.
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# User Notification Preferences
-@app.route('/user-settings/<magic_token>')
-def user_settings(magic_token):
-    db = get_db()
-    user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
-    if not user:
-        abort(403)
-    
-    # Get user's notification preferences
-    prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
-                      (user['id'],)).fetchone()
-    
-    # If no preferences exist, create default ones
-    if not prefs:
-        db.execute('''INSERT INTO user_notification_preferences 
-                     (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder) 
-                     VALUES (?, 1, 1, 1, 1, 1)''', (user['id'],))
-        db.commit()
-        prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
-                          (user['id'],)).fetchone()
-    
-    return render_template('user_settings.html', user=user, prefs=prefs)
-
-@app.route('/user-settings/<magic_token>/update', methods=['POST'])
-def update_user_settings(magic_token):
-    db = get_db()
-    user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
-    if not user:
-        abort(403)
-    
-    # Update notification preferences
-    account_created = 1 if request.form.get('account_created') else 0
-    new_post = 1 if request.form.get('new_post') else 0
-    major_event = 1 if request.form.get('major_event') else 0
-    comment_reply = 1 if request.form.get('comment_reply') else 0
-    magic_link_reminder = 1 if request.form.get('magic_link_reminder') else 0
-    
-    # Update or insert preferences
-    existing = db.execute('SELECT id FROM user_notification_preferences WHERE user_id = ?', 
-                         (user['id'],)).fetchone()
-    
-    if existing:
-        db.execute('''UPDATE user_notification_preferences 
-                     SET account_created = ?, new_post = ?, major_event = ?, 
-                         comment_reply = ?, magic_link_reminder = ?, updated = CURRENT_TIMESTAMP
-                     WHERE user_id = ?''',
-                  (account_created, new_post, major_event, comment_reply, 
-                   magic_link_reminder, user['id']))
-    else:
-        db.execute('''INSERT INTO user_notification_preferences 
-                     (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder) 
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                  (user['id'], account_created, new_post, major_event, comment_reply, magic_link_reminder))
-    
-    db.commit()
-    flash('Your notification preferences have been updated!', 'success')
-    return redirect(url_for('user_settings', magic_token=magic_token))
-
 # Test email functionality
 @app.route('/admin/test-email', methods=['POST'])
 def test_email():
