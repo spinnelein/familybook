@@ -619,6 +619,36 @@ View the conversation: {{magic_link}}''',
             UNIQUE(user_id, post_id, reaction_type)
         )''')
         
+        # Add settings table
+        db.execute('''CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            description TEXT,
+            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Insert default settings if they don't exist
+        default_settings = [
+            ('oauth_client_id', '', 'Google OAuth Client ID'),
+            ('oauth_client_secret', '', 'Google OAuth Client Secret'),
+            ('oauth_redirect_uri', '', 'OAuth redirect URI (e.g., http://localhost:5000/admin/oauth/callback)'),
+            ('smtp_server', '', 'SMTP server address'),
+            ('smtp_port', '587', 'SMTP server port'),
+            ('smtp_username', '', 'SMTP username'),
+            ('smtp_password', '', 'SMTP password'),
+            ('smtp_use_tls', 'true', 'Use TLS for SMTP'),
+            ('email_from_name', 'Familybook', 'Email sender name'),
+            ('email_from_address', '', 'Email sender address'),
+            ('notifications_enabled', 'false', 'Enable email notifications'),
+            ('family_name', 'Our Family', 'Family name for emails and branding')
+        ]
+        
+        for key, default_value, description in default_settings:
+            existing = db.execute('SELECT key FROM settings WHERE key = ?', (key,)).fetchone()
+            if not existing:
+                db.execute('INSERT INTO settings (key, value, description) VALUES (?, ?, ?)',
+                          (key, default_value, description))
+        
         db.commit()
         
         # Extract images from existing posts and populate images table
