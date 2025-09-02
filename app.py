@@ -17,7 +17,22 @@ app = Flask(__name__)
 
 # Configure uploads folder - can be overridden with environment variable for Synology mounting
 app.config['UPLOAD_FOLDER'] = os.environ.get('FAMILYBOOK_UPLOADS_PATH', 'static/uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except FileExistsError:
+    # On Windows, this can happen even with exist_ok=True
+    # Check if it's actually a directory
+    if not os.path.isdir(app.config['UPLOAD_FOLDER']):
+        print(f"Error: {app.config['UPLOAD_FOLDER']} exists but is not a directory")
+        raise
+    # If it's a directory, continue normally
+except PermissionError as e:
+    print(f"Permission error creating uploads folder: {e}")
+    print(f"Please ensure the application has write permissions to create {app.config['UPLOAD_FOLDER']}")
+    raise
+except Exception as e:
+    print(f"Error creating uploads folder: {e}")
+    raise
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
 app.config['DATABASE'] = os.environ.get('FAMILYBOOK_DATABASE_PATH', 'familybook.db')
