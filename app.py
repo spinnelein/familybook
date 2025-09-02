@@ -627,6 +627,18 @@ View the conversation: {{magic_link}}''',
             updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         
+        # Add user notification preferences table
+        db.execute('''CREATE TABLE IF NOT EXISTS user_notification_preferences (
+            user_id INTEGER PRIMARY KEY,
+            account_created INTEGER DEFAULT 1,
+            new_post INTEGER DEFAULT 1,
+            major_event INTEGER DEFAULT 1,
+            comment_reply INTEGER DEFAULT 1,
+            magic_link_reminder INTEGER DEFAULT 0,
+            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )''')
+        
         # Insert default settings if they don't exist
         default_settings = [
             ('oauth_client_id', '', 'Google OAuth Client ID'),
@@ -2817,6 +2829,68 @@ def admin_activity_log():
     except Exception as e:
         print(f"Error loading activity log: {str(e)}")
         return "Error loading activity log", 500
+
+# User Settings Routes
+@app.route('/user-settings/<magic_token>')
+def user_settings(magic_token):
+    """Display user email preference settings"""
+    try:
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+        if not user:
+            abort(403)
+        
+        # Get user's notification preferences
+        prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
+                          (user['id'],)).fetchone()
+        
+        # If no preferences exist, create defaults
+        if not prefs:
+            db.execute('''INSERT INTO user_notification_preferences 
+                         (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder)
+                         VALUES (?, 1, 1, 1, 1, 0)''', (user['id'],))
+            db.commit()
+            prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
+                              (user['id'],)).fetchone()
+        
+        return render_template('user_settings.html', user=user, prefs=prefs)
+        
+    except Exception as e:
+        print(f"Error loading user settings: {str(e)}")
+        return "Error loading user settings", 500
+
+@app.route('/update-user-settings/<magic_token>', methods=['POST'])
+def update_user_settings(magic_token):
+    """Update user email preference settings"""
+    try:
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
+        if not user:
+            abort(403)
+        
+        # Get form data
+        account_created = 1 if request.form.get('account_created') else 0
+        new_post = 1 if request.form.get('new_post') else 0
+        major_event = 1 if request.form.get('major_event') else 0
+        comment_reply = 1 if request.form.get('comment_reply') else 0
+        magic_link_reminder = 1 if request.form.get('magic_link_reminder') else 0
+        
+        # Update preferences
+        db.execute('''UPDATE user_notification_preferences 
+                     SET account_created = ?, new_post = ?, major_event = ?, 
+                         comment_reply = ?, magic_link_reminder = ?
+                     WHERE user_id = ?''',
+                   (account_created, new_post, major_event, comment_reply, 
+                    magic_link_reminder, user['id']))
+        db.commit()
+        
+        flash('Your email preferences have been updated successfully!', 'success')
+        return redirect(url_for('user_settings', magic_token=magic_token))
+        
+    except Exception as e:
+        print(f"Error updating user settings: {str(e)}")
+        flash('Error updating preferences. Please try again.', 'danger')
+        return redirect(url_for('user_settings', magic_token=magic_token))
 
 # Heart/Like Functionality Routes
 @app.route('/toggle-heart/<magic_token>', methods=['POST'])
