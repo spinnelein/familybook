@@ -2877,7 +2877,6 @@ def update_user_settings(magic_token):
             abort(403)
         
         # Get form data
-        account_created = 1 if request.form.get('account_created') else 0
         new_post = 1 if request.form.get('new_post') else 0
         major_event = 1 if request.form.get('major_event') else 0
         comment_reply = 1 if request.form.get('comment_reply') else 0
@@ -2885,10 +2884,10 @@ def update_user_settings(magic_token):
         
         # Update preferences
         db.execute('''UPDATE user_notification_preferences 
-                     SET account_created = ?, new_post = ?, major_event = ?, 
+                     SET new_post = ?, major_event = ?, 
                          comment_reply = ?, magic_link_reminder = ?
                      WHERE user_id = ?''',
-                   (account_created, new_post, major_event, comment_reply, 
+                   (new_post, major_event, comment_reply, 
                     magic_link_reminder, user['id']))
         db.commit()
         
