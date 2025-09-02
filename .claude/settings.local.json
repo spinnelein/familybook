@@ -23,7 +23,10 @@
       "Bash(git stash push:*)",
       "Bash(rg:*)",
       "Bash(tail:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(file:*)",
+      "Bash(xxd:*)",
+      "Bash(head:*)"
     ],
     "deny": []
   }

@@ -631,6 +631,19 @@ View the conversation: {{magic_link}}''',
             FOREIGN KEY (post_id) REFERENCES posts (id)
         )''')
         
+        # Add email logs table for tracking all outbound emails
+        db.execute('''CREATE TABLE IF NOT EXISTS email_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient_email TEXT NOT NULL,
+            template_name TEXT,
+            subject TEXT,
+            status TEXT NOT NULL,  -- 'sent', 'failed', 'pending'
+            error_message TEXT,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_id INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )''')
+        
         # Add reactions table for likes/hearts
         db.execute('''CREATE TABLE IF NOT EXISTS reactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -932,7 +945,7 @@ def render_email_template(template_name, **context):
         print(f"Error rendering email template '{template_name}': {e}")
         return None, None, None
 
-def send_templated_email(template_name, to_email, **context):
+def send_templated_email(template_name, to_email, user_id=None, **context):
     """Send an email using a template"""
     try:
         subject, html_body, plain_body = render_email_template(template_name, **context)
@@ -948,7 +961,7 @@ def send_templated_email(template_name, to_email, **context):
         print(f"Plain body length: {len(plain_body or '')} chars")
         print(f"HTML body starts with: {(html_body or '')[:100]}...")
         
-        return send_traditional_smtp_email(to_email, subject, html_body, plain_body)
+        return send_traditional_smtp_email(to_email, subject, html_body, plain_body, template_name, user_id)
     
     except Exception as e:
         print(f"Error sending templated email '{template_name}' to {to_email}: {e}")
@@ -988,14 +1001,41 @@ def send_notification_email(template_name, user_id, **context):
         context['user_name'] = user['name']
         context['magic_link'] = url_for('posts', magic_token=user['magic_token'], _external=True)
         
-        return send_templated_email(template_name, user['email'], **context)
+        return send_templated_email(template_name, user['email'], user_id, **context)
     
     except Exception as e:
         print(f"Error sending notification email to user {user_id}: {e}")
         return False
 
-def send_traditional_smtp_email(to_email, subject, html_body, plain_body):
+def log_email(recipient_email, template_name=None, subject=None, status='pending', error_message=None, user_id=None):
+    """Log email sending attempts to the database"""
+    try:
+        db = get_db()
+        db.execute('''INSERT INTO email_logs 
+                     (recipient_email, template_name, subject, status, error_message, user_id)
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                  (recipient_email, template_name, subject, status, error_message, user_id))
+        db.commit()
+        return db.lastrowid
+    except Exception as e:
+        print(f"Failed to log email: {e}")
+        return None
+
+def update_email_log(log_id, status, error_message=None):
+    """Update the status of an email log entry"""
+    try:
+        db = get_db()
+        db.execute('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?',
+                  (status, error_message, log_id))
+        db.commit()
+    except Exception as e:
+        print(f"Failed to update email log: {e}")
+
+def send_traditional_smtp_email(to_email, subject, html_body, plain_body, template_name=None, user_id=None):
     """Send email using traditional SMTP (fallback method)"""
+    # Log the email attempt
+    log_id = log_email(to_email, template_name, subject, 'pending', None, user_id)
+    
     try:
         # Get SMTP settings
         smtp_server = get_setting('smtp_server', '')
@@ -1008,7 +1048,10 @@ def send_traditional_smtp_email(to_email, subject, html_body, plain_body):
         
         # Validate required settings (username/password optional for local servers)
         if not all([smtp_server, email_from_address]):
-            print("Email sending skipped: Missing SMTP server or from address")
+            error_msg = "Missing SMTP server or from address"
+            print(f"Email sending skipped: {error_msg}")
+            if log_id:
+                update_email_log(log_id, 'failed', error_msg)
             return False
         
         # Create email
@@ -1035,11 +1078,17 @@ def send_traditional_smtp_email(to_email, subject, html_body, plain_body):
         server.send_message(msg)
         server.quit()
         
+        # Log successful send
+        if log_id:
+            update_email_log(log_id, 'sent')
         print(f"Email sent successfully to {to_email}")
         return True
         
     except Exception as e:
-        print(f"SMTP email sending failed: {e}")
+        error_msg = str(e)
+        print(f"SMTP email sending failed: {error_msg}")
+        if log_id:
+            update_email_log(log_id, 'failed', error_msg)
         return False
 
 # Legacy email notification function - replaced by templated system
@@ -1607,16 +1656,48 @@ def admin_settings():
             'description': setting['description']
         }
     
-    # Generate email stats for the template
-    # Note: This is a placeholder implementation
-    email_stats = {
-        'today_emails': 0,
-        'yesterday_emails': 0, 
-        'limited_users': []
-    }
-    
-    # TODO: Implement actual email statistics if needed
-    # Could track emails sent from activity log or separate email tracking table
+    # Generate email stats for the template using email_logs table
+    try:
+        # Get today's emails count
+        today_emails = db.execute('''
+            SELECT COUNT(*) as count FROM email_logs 
+            WHERE date(sent_at) = date('now', 'localtime')
+            AND status = 'sent'
+        ''').fetchone()
+        
+        # Get yesterday's emails count
+        yesterday_emails = db.execute('''
+            SELECT COUNT(*) as count FROM email_logs 
+            WHERE date(sent_at) = date('now', '-1 day', 'localtime')
+            AND status = 'sent'
+        ''').fetchone()
+        
+        # Get users who might be rate limited (sent more than 10 emails today)
+        limited_users = db.execute('''
+            SELECT u.name, u.email, COUNT(el.id) as email_count
+            FROM email_logs el
+            JOIN users u ON el.user_id = u.id
+            WHERE date(el.sent_at) = date('now', 'localtime')
+            AND el.status = 'sent'
+            GROUP BY u.id, u.name, u.email
+            HAVING COUNT(el.id) >= 10
+            ORDER BY email_count DESC
+        ''').fetchall()
+        
+        email_stats = {
+            'today_emails': today_emails['count'] if today_emails else 0,
+            'yesterday_emails': yesterday_emails['count'] if yesterday_emails else 0,
+            'limited_users': [{'name': row['name'], 'email': row['email'], 'count': row['email_count']} 
+                            for row in limited_users] if limited_users else []
+        }
+    except Exception as e:
+        print(f"Error calculating email statistics: {e}")
+        # Fall back to placeholder values if there's an error
+        email_stats = {
+            'today_emails': 0,
+            'yesterday_emails': 0,
+            'limited_users': []
+        }
     
     return render_template('admin_settings.html', settings=settings, email_stats=email_stats)
 
@@ -2806,6 +2887,102 @@ def admin_activity_log():
     except Exception as e:
         print(f"Error loading activity log: {str(e)}")
         return "Error loading activity log", 500
+
+@app.route('/admin/email-logs')
+def admin_email_logs():
+    """Display comprehensive email logs for debugging and statistics"""
+    # Check admin authentication
+    if requires_admin_auth():
+        return redirect(url_for('admin_login'))
+    
+    try:
+        db = get_db()
+        
+        # Get filter parameters
+        status_filter = request.args.get('status', '').strip()
+        template_filter = request.args.get('template', '').strip()
+        recipient_filter = request.args.get('recipient', '').strip()
+        days_filter = int(request.args.get('days', 7))
+        page = int(request.args.get('page', 1))
+        per_page = 50
+        offset = (page - 1) * per_page
+        
+        # Build WHERE clause
+        where_conditions = []
+        params = []
+        
+        if status_filter:
+            where_conditions.append("status = ?")
+            params.append(status_filter)
+        
+        if template_filter:
+            where_conditions.append("template_name = ?")
+            params.append(template_filter)
+        
+        if recipient_filter:
+            where_conditions.append("recipient_email LIKE ?")
+            params.append(f"%{recipient_filter}%")
+        
+        # Time filter
+        where_conditions.append("sent_at >= datetime('now', '-{} days')".format(days_filter))
+        
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        
+        # Get email logs with user names
+        query = f'''SELECT el.*, u.name as user_name
+                   FROM email_logs el
+                   LEFT JOIN users u ON el.user_id = u.id
+                   WHERE {where_clause}
+                   ORDER BY el.sent_at DESC
+                   LIMIT ? OFFSET ?'''
+        
+        params.extend([per_page, offset])
+        email_logs = db.execute(query, params).fetchall()
+        
+        # Get total count for pagination
+        count_query = f"SELECT COUNT(*) as total FROM email_logs WHERE {where_clause}"
+        count_params = params[:-2]  # Remove LIMIT and OFFSET params
+        total = db.execute(count_query, count_params).fetchone()['total']
+        
+        # Get filter options
+        statuses = db.execute('SELECT DISTINCT status FROM email_logs ORDER BY status').fetchall()
+        templates = db.execute('SELECT DISTINCT template_name FROM email_logs WHERE template_name IS NOT NULL ORDER BY template_name').fetchall()
+        
+        # Calculate pagination info
+        total_pages = (total + per_page - 1) // per_page
+        has_prev = page > 1
+        has_next = page < total_pages
+        
+        # Get summary statistics
+        stats = {
+            'total_sent': db.execute("SELECT COUNT(*) as count FROM email_logs WHERE status = 'sent'").fetchone()['count'],
+            'total_failed': db.execute("SELECT COUNT(*) as count FROM email_logs WHERE status = 'failed'").fetchone()['count'],
+            'today_sent': db.execute("SELECT COUNT(*) as count FROM email_logs WHERE status = 'sent' AND date(sent_at) = date('now', 'localtime')").fetchone()['count'],
+            'yesterday_sent': db.execute("SELECT COUNT(*) as count FROM email_logs WHERE status = 'sent' AND date(sent_at) = date('now', 'localtime', '-1 day')").fetchone()['count']
+        }
+        
+        return render_template('admin_email_logs.html',
+                             email_logs=email_logs,
+                             statuses=statuses,
+                             templates=templates,
+                             stats=stats,
+                             current_filters={
+                                 'status': status_filter,
+                                 'template': template_filter,
+                                 'recipient': recipient_filter,
+                                 'days': days_filter
+                             },
+                             pagination={
+                                 'page': page,
+                                 'total_pages': total_pages,
+                                 'has_prev': has_prev,
+                                 'has_next': has_next,
+                                 'total': total
+                             })
+        
+    except Exception as e:
+        print(f"Error loading email logs: {str(e)}")
+        return "Error loading email logs", 500
 
 # User Settings Routes
 @app.route('/user-settings/<magic_token>')
