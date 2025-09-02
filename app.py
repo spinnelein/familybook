@@ -2812,29 +2812,60 @@ def admin_activity_log():
 def user_settings(magic_token):
     """Display user email preference settings"""
     try:
+        print(f"User settings accessed with magic_token: {magic_token}")
         db = get_db()
         user = db.execute('SELECT * FROM users WHERE magic_token = ?', (magic_token,)).fetchone()
         if not user:
+            print(f"No user found with magic_token: {magic_token}")
             abort(403)
         
-        # Get user's notification preferences
-        prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
-                          (user['id'],)).fetchone()
+        print(f"Found user: {user['name']} (ID: {user['id']})")
+        
+        # Check if user_notification_preferences table exists
+        try:
+            prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
+                              (user['id'],)).fetchone()
+            print(f"User preferences found: {prefs is not None}")
+        except Exception as table_error:
+            print(f"Error accessing user_notification_preferences table: {table_error}")
+            # Table might not exist, create it
+            try:
+                db.execute('''CREATE TABLE IF NOT EXISTS user_notification_preferences (
+                    user_id INTEGER PRIMARY KEY,
+                    account_created INTEGER DEFAULT 1,
+                    new_post INTEGER DEFAULT 1,
+                    major_event INTEGER DEFAULT 1,
+                    comment_reply INTEGER DEFAULT 1,
+                    magic_link_reminder INTEGER DEFAULT 0,
+                    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )''')
+                db.commit()
+                print("Created user_notification_preferences table")
+                prefs = None
+            except Exception as create_error:
+                print(f"Error creating table: {create_error}")
+                raise
         
         # If no preferences exist, create defaults
         if not prefs:
+            print("Creating default preferences for user")
             db.execute('''INSERT INTO user_notification_preferences 
                          (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder)
                          VALUES (?, 1, 1, 1, 1, 0)''', (user['id'],))
             db.commit()
             prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
                               (user['id'],)).fetchone()
+            print("Default preferences created")
         
+        print("Rendering user_settings.html template")
         return render_template('user_settings.html', user=user, prefs=prefs)
         
     except Exception as e:
         print(f"Error loading user settings: {str(e)}")
-        return "Error loading user settings", 500
+        import traceback
+        traceback.print_exc()
+        return f"Error loading user settings: {str(e)}", 500
 
 @app.route('/update-user-settings/<magic_token>', methods=['POST'])
 def update_user_settings(magic_token):
