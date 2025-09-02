@@ -1607,7 +1607,18 @@ def admin_settings():
             'description': setting['description']
         }
     
-    return render_template('admin_settings.html', settings=settings)
+    # Generate email stats for the template
+    # Note: This is a placeholder implementation
+    email_stats = {
+        'today_emails': 0,
+        'yesterday_emails': 0, 
+        'limited_users': []
+    }
+    
+    # TODO: Implement actual email statistics if needed
+    # Could track emails sent from activity log or separate email tracking table
+    
+    return render_template('admin_settings.html', settings=settings, email_stats=email_stats)
 
 # Email Templates Management
 @app.route('/admin/email-templates')
