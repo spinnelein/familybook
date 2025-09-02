@@ -12,6 +12,34 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from authlib.integrations.flask_client import OAuth
 import email.utils
+from datetime import datetime, timezone, timedelta
+import pytz
+
+# Pacific Time helper functions
+def get_pacific_timezone():
+    """Get Pacific timezone (handles PST/PDT automatically)"""
+    return pytz.timezone('America/Los_Angeles')
+
+def get_pacific_now():
+    """Get current time in Pacific timezone as ISO string"""
+    pacific_tz = get_pacific_timezone()
+    return datetime.now(pacific_tz).strftime('%Y-%m-%d %H:%M:%S')
+
+def utc_to_pacific(utc_string):
+    """Convert UTC timestamp string to Pacific time string"""
+    if not utc_string:
+        return utc_string
+    try:
+        # Parse UTC time
+        utc_dt = datetime.fromisoformat(utc_string.replace('T', ' ').replace('Z', ''))
+        utc_dt = pytz.UTC.localize(utc_dt)
+        
+        # Convert to Pacific
+        pacific_tz = get_pacific_timezone()
+        pacific_dt = utc_dt.astimezone(pacific_tz)
+        return pacific_dt.strftime('%Y-%m-%d %H:%M:%S')
+    except:
+        return utc_string
 
 app = Flask(__name__)
 
@@ -728,12 +756,12 @@ def log_activity(action_type, user_id=None, user_name=None, post_id=None, post_t
         ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'Unknown'))
         user_agent = request.environ.get('HTTP_USER_AGENT', '')[:500]  # Limit length
         
-        # Insert activity log
+        # Insert activity log with Pacific Time
         db = get_db()
         db.execute('''INSERT INTO activity_log 
-                     (user_id, user_name, action_type, post_id, post_title, comment_text, ip_address, user_agent)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                   (user_id, user_name, action_type, post_id, post_title, comment_text, ip_address, user_agent))
+                     (user_id, user_name, action_type, post_id, post_title, comment_text, ip_address, user_agent, created)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                   (user_id, user_name, action_type, post_id, post_title, comment_text, ip_address, user_agent, get_pacific_now()))
         db.commit()
         
     except Exception as e:
@@ -1018,9 +1046,9 @@ def log_email(recipient_email, template_name=None, subject=None, status='pending
     try:
         db = get_db()
         db.execute('''INSERT INTO email_logs 
-                     (recipient_email, template_name, subject, status, error_message, user_id)
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                  (recipient_email, template_name, subject, status, error_message, user_id))
+                     (recipient_email, template_name, subject, status, error_message, user_id, sent_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                  (recipient_email, template_name, subject, status, error_message, user_id, get_pacific_now()))
         db.commit()
         return db.lastrowid
     except Exception as e:
@@ -1131,8 +1159,8 @@ def create_post(magic_token=None):
         if not user['is_admin']:
             abort(403)  # Only admins can create posts
         
-        # Update last login time
-        db.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user['id'],))
+        # Update last login time with Pacific Time
+        db.execute('UPDATE users SET last_login = ? WHERE id = ?', (get_pacific_now(), user['id']))
         db.commit()
     
     if request.method == 'POST':
@@ -1143,10 +1171,10 @@ def create_post(magic_token=None):
         db = get_db()
         author_id = user['id'] if user else None
         
-        # Insert post with tags
+        # Insert post with tags and Pacific Time
         cursor = db.execute(
-            "INSERT INTO posts (title, content, author_id, tags) VALUES (?, ?, ?, ?)",
-            (title, content, author_id, tags)
+            "INSERT INTO posts (title, content, author_id, tags, created) VALUES (?, ?, ?, ?, ?)",
+            (title, content, author_id, tags, get_pacific_now())
         )
         post_id = cursor.lastrowid
         db.commit()
@@ -3019,7 +3047,6 @@ def user_settings(magic_token):
                     new_post INTEGER DEFAULT 1,
                     major_event INTEGER DEFAULT 1,
                     comment_reply INTEGER DEFAULT 1,
-                    magic_link_reminder INTEGER DEFAULT 0,
                     updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id)
                 )''')
@@ -3034,8 +3061,8 @@ def user_settings(magic_token):
         if not prefs:
             print("Creating default preferences for user")
             db.execute('''INSERT INTO user_notification_preferences 
-                         (user_id, account_created, new_post, major_event, comment_reply, magic_link_reminder)
-                         VALUES (?, 1, 1, 1, 1, 0)''', (user['id'],))
+                         (user_id, account_created, new_post, major_event, comment_reply)
+                         VALUES (?, 1, 1, 1, 1)''', (user['id'],))
             db.commit()
             prefs = db.execute('SELECT * FROM user_notification_preferences WHERE user_id = ?', 
                               (user['id'],)).fetchone()
@@ -3063,15 +3090,12 @@ def update_user_settings(magic_token):
         new_post = 1 if request.form.get('new_post') else 0
         major_event = 1 if request.form.get('major_event') else 0
         comment_reply = 1 if request.form.get('comment_reply') else 0
-        magic_link_reminder = 1 if request.form.get('magic_link_reminder') else 0
         
         # Update preferences
         db.execute('''UPDATE user_notification_preferences 
-                     SET new_post = ?, major_event = ?, 
-                         comment_reply = ?, magic_link_reminder = ?
+                     SET new_post = ?, major_event = ?, comment_reply = ?
                      WHERE user_id = ?''',
-                   (new_post, major_event, comment_reply, 
-                    magic_link_reminder, user['id']))
+                   (new_post, major_event, comment_reply, user['id']))
         db.commit()
         
         flash('Your email preferences have been updated successfully!', 'success')
@@ -3123,10 +3147,10 @@ def toggle_heart(magic_token):
             # Log unlike activity
             log_activity('unlike', user['id'], user['name'], post_id, post['title'])
         else:
-            # Add heart
+            # Add heart with Pacific Time
             db.execute(
-                'INSERT INTO reactions (user_id, post_id, reaction_type) VALUES (?, ?, ?)',
-                (user['id'], post_id, 'heart')
+                'INSERT INTO reactions (user_id, post_id, reaction_type, created) VALUES (?, ?, ?, ?)',
+                (user['id'], post_id, 'heart', get_pacific_now())
             )
             hearted = True
             # Log like activity
