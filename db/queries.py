@@ -63,12 +63,12 @@ def log_email(recipient_email, template_name=None, subject=None, status='pending
     """Log email sending attempts to the database"""
     try:
         db = get_db()
-        db.execute('''INSERT INTO email_logs 
+        cursor = db.execute('''INSERT INTO email_logs 
                      (recipient_email, template_name, subject, status, error_message, user_id, sent_at)
                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
                   (recipient_email, template_name, subject, status, error_message, user_id, get_pacific_now()))
         db.commit()
-        return db.lastrowid
+        return cursor.lastrowid
     except Exception as e:
         print(f"Failed to log email: {e}")
         return None
@@ -81,8 +81,10 @@ def update_email_log(log_id, status, error_message=None):
         db.execute('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?',
                   (status, error_message, log_id))
         db.commit()
+        return True
     except Exception as e:
         print(f"Failed to update email log: {e}")
+        return False
 
 
 # User Operations
