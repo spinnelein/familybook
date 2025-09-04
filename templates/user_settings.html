@@ -276,7 +276,7 @@
                     👁️ View Posts
                 </a>
                 {% if user['is_admin'] %}
-                    <a href="{{ url_for('main.create_post', magic_token=user['magic_token']) }}" class="btn btn-outline">
+                    <a href="{{ url_for('main.create_post_route', magic_token=user['magic_token']) }}" class="btn btn-outline">
                          Create Post
                     </a>
                 {% endif %}
