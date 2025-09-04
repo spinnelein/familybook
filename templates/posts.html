@@ -853,7 +853,7 @@
         {% if user %}
             <p class="welcome-message">Welcome, {{ user.name }}! Enjoy browsing our family memories.</p>
             <div style="margin-top: 15px;">
-                <a href="{{ url_for('user_settings', magic_token=user.magic_token) }}" 
+                <a href="{{ url_for('main.user_settings', magic_token=user.magic_token) }}" 
                    style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
                    onmouseover="this.style.background='#2563eb'"
                    onmouseout="this.style.background='#3b82f6'">
@@ -870,7 +870,7 @@
             {% if current_month %}
                 <div class="current-filter">
                     📅 Showing posts from {{ current_month[:4] }}-{{ current_month[5:] }}
-                    <br><a href="{{ url_for('posts', magic_token=user.magic_token) }}" style="color: #3b82f6;">← Back to Posts</a>
+                    <br><a href="{{ url_for('main.posts', magic_token=user.magic_token) }}" style="color: #3b82f6;">← Back to Posts</a>
                 </div>
             {% endif %}
             
@@ -891,7 +891,7 @@
                                 {% endif %}
                                 <span class="post-date">{{ post['created'][:16].replace('-', '/').replace('T', ' ')[5:] }}</span>
                                 {% if user and user['is_admin'] %}
-                                    <form method="POST" action="{{ url_for('delete_post', magic_token=user.magic_token, post_id=post['id']) }}" style="display: inline; margin: 0;">
+                                    <form method="POST" action="{{ url_for('main.delete_post', magic_token=user.magic_token, post_id=post['id']) }}" style="display: inline; margin: 0;">
                                         <button type="submit" class="delete-post-btn" 
                                                 onclick="return confirm('Are you sure you want to delete this post? This action cannot be undone.');">
                                             🗑️
@@ -949,7 +949,7 @@
                                                                 💬 Reply
                                                             </button>
                                                             <div class="reply-form-container" id="reply-form-{{ comment['id'] }}" style="display: none;">
-                                                                <form method="POST" action="{{ url_for('add_comment', magic_token=user.magic_token) }}" class="reply-form">
+                                                                <form method="POST" action="{{ url_for('main.add_comment', magic_token=user.magic_token) }}" class="reply-form">
                                                                     <input type="hidden" name="post_id" value="{{ post['id'] }}">
                                                                     <input type="hidden" name="parent_comment_id" value="{{ comment['id'] }}">
                                                                     <textarea name="content" placeholder="Reply to {{ comment['user_name'] }}..." required></textarea>
@@ -983,7 +983,7 @@
                                                                         💬 Reply
                                                                     </button>
                                                                     <div class="reply-form-container" id="reply-form-{{ reply['id'] }}" style="display: none;">
-                                                                        <form method="POST" action="{{ url_for('add_comment', magic_token=user.magic_token) }}" class="reply-form">
+                                                                        <form method="POST" action="{{ url_for('main.add_comment', magic_token=user.magic_token) }}" class="reply-form">
                                                                             <input type="hidden" name="post_id" value="{{ post['id'] }}">
                                                                             <input type="hidden" name="parent_comment_id" value="{{ comment['id'] }}">
                                                                             <textarea name="content" placeholder="Reply to {{ reply['user_name'] }}..." required></textarea>
@@ -1003,7 +1003,7 @@
                                     </div>
                                 {% endif %}
                                 
-                                <form method="POST" action="{{ url_for('add_comment', magic_token=user.magic_token) }}" class="comment-form">
+                                <form method="POST" action="{{ url_for('main.add_comment', magic_token=user.magic_token) }}" class="comment-form">
                                     <input type="hidden" name="post_id" value="{{ post['id'] }}">
                                     <textarea name="content" placeholder="Add a comment..." required></textarea>
                                     <button type="submit" class="btn btn-comment">Add Comment</button>
@@ -1021,7 +1021,7 @@
                         {% elif current_view == 'new' %}
                             <h2>🌟 No new posts!</h2>
                             <p>No posts since your last visit. Check out all posts to see what you might have missed!</p>
-                            <a href="{{ url_for('posts', magic_token=user.magic_token, show_type='all') }}" class="load-older-btn">📚 View All Posts</a>
+                            <a href="{{ url_for('main.posts', magic_token=user.magic_token, show_type='all') }}" class="load-older-btn">📚 View All Posts</a>
                         {% else %}
                             <h2>📝 No posts yet!</h2>
                             <p>No posts have been created yet.</p>
@@ -1032,7 +1032,7 @@
                 <!-- Load More Posts button at bottom -->
                 {% if posts and current_view == 'new' %}
                     <div style="text-align: center; margin-top: 40px; padding: 30px;">
-                        <a href="{{ url_for('posts', magic_token=user.magic_token, show_type='all') }}" class="load-older-btn">
+                        <a href="{{ url_for('main.posts', magic_token=user.magic_token, show_type='all') }}" class="load-older-btn">
                             📚 Load More Posts
                         </a>
                         <p style="color: rgba(255,255,255,0.8); margin-top: 15px; font-size: 14px;">
@@ -1046,14 +1046,14 @@
         <div class="sidebar">
             <div class="month-nav" style="margin-bottom: 20px;">
                 <h3>📸 Photo Stream</h3>
-                <a href="{{ url_for('photo_stream', magic_token=user.magic_token) }}" class="month-link photo-stream-link">
+                <a href="{{ url_for('main.photo_stream', magic_token=user.magic_token) }}" class="month-link photo-stream-link">
                     🖼️ View All Photos
                 </a>
             </div>
             
             <div class="month-nav" style="margin-bottom: 20px;">
                 <h3>ℹ️ About Us</h3>
-                <a href="{{ url_for('about_us') }}" class="month-link" target="_blank">
+                <a href="{{ url_for('main.about_us') }}" class="month-link" target="_blank">
                     📖 Learn More About Us
                 </a>
             </div>
@@ -1067,7 +1067,7 @@
                         <span class="post-count">{{ posts|length }}</span>
                     </div>
                 {% else %}
-                    <a href="{{ url_for('posts', magic_token=user.magic_token) }}" class="month-link">
+                    <a href="{{ url_for('main.posts', magic_token=user.magic_token) }}" class="month-link">
                         📆 Last 30 Days
                     </a>
                 {% endif %}
@@ -1084,7 +1084,7 @@
                             <span class="post-count">{{ post_count }}</span>
                         </div>
                     {% else %}
-                        <a href="{{ url_for('posts', magic_token=user.magic_token, year_month=month_name) }}" class="month-link">
+                        <a href="{{ url_for('main.posts', magic_token=user.magic_token, year_month=month_name) }}" class="month-link">
                             📅 {{ year }}-{{ month_num }}
                             <span class="post-count">{{ post_count }}</span>
                         </a>
@@ -1103,12 +1103,12 @@
                 <div class="month-nav" style="margin-top: 30px;">
                     <h3>🏷️ Filter by Tag</h3>
                     <div class="tag-filters">
-                        <a href="{{ url_for('posts', magic_token=user.magic_token) }}" 
+                        <a href="{{ url_for('main.posts', magic_token=user.magic_token) }}" 
                            class="tag-filter-btn {% if not current_tag %}active{% endif %}">
                             📝 All Posts
                         </a>
                         {% for tag in filter_tags %}
-                            <a href="{{ url_for('posts', magic_token=user.magic_token, tag_filter=tag.name) }}" 
+                            <a href="{{ url_for('main.posts', magic_token=user.magic_token, tag_filter=tag.name) }}" 
                                class="tag-filter-btn {% if current_tag == tag.name %}active{% endif %}" 
                                style="--tag-color: {{ tag.color }}">
                                 🏷️ {{ tag.display_name }}
@@ -1176,7 +1176,7 @@
             console.log('Magic token:', '{{ user.magic_token if user else "NONE" }}');
             
             try {
-                const url = `{{ url_for('toggle_heart', magic_token=user.magic_token) if user else '/toggle-heart/' }}`;
+                const url = `{{ url_for('main.toggle_heart', magic_token=user.magic_token) if user else '/toggle-heart/' }}`;
                 console.log('Fetch URL:', url);
                 
                 const response = await fetch(url, {

@@ -294,9 +294,9 @@
         <div class="header">
             <h1>✏️ Edit Email Template</h1>
             <div class="nav-links">
-                <a href="{{ url_for('admin_email_templates') }}">📧 Back to Templates</a>
-                <a href="{{ url_for('admin_console') }}">👥 Users</a>
-                <a href="{{ url_for('admin_settings') }}">⚙️ Settings</a>
+                <a href="{{ url_for('admin.admin_email_templates') }}">📧 Back to Templates</a>
+                <a href="{{ url_for('admin.admin_console') }}">👥 Users</a>
+                <a href="{{ url_for('admin.admin_settings') }}">⚙️ Settings</a>
             </div>
         </div>
         
@@ -408,7 +408,7 @@
                 <button type="button" onclick="testTemplate()" class="btn btn-success">
                     📧 Send Test Email
                 </button>
-                <a href="{{ url_for('admin_email_templates') }}" class="btn btn-secondary">
+                <a href="{{ url_for('admin.admin_email_templates') }}" class="btn btn-secondary">
                     ❌ Cancel
                 </a>
             </div>
@@ -466,7 +466,7 @@
                 return;
             }
             
-            fetch('{{ url_for("test_email_template", template_id=template["id"]) }}', {
+            fetch('{{ url_for("admin.test_email_template", template_id=template["id"]) }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

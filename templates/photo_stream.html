@@ -311,11 +311,11 @@
     
     <div class="controls">
         <div class="sort-controls">
-            <a href="{{ url_for('posts', magic_token=user.magic_token) }}" class="back-link">← Back to Posts</a>
+            <a href="{{ url_for('main.posts', magic_token=user.magic_token) }}" class="back-link">← Back to Posts</a>
             <span style="color: #64748b;">Sort by:</span>
-            <a href="{{ url_for('photo_stream', magic_token=user.magic_token, sort_order='recent') }}" 
+            <a href="{{ url_for('main.photo_stream', magic_token=user.magic_token, sort_order='recent') }}" 
                class="sort-btn {{ 'active' if sort_order == 'recent' else '' }}">📅 Most Recent</a>
-            <a href="{{ url_for('photo_stream', magic_token=user.magic_token, sort_order='oldest') }}" 
+            <a href="{{ url_for('main.photo_stream', magic_token=user.magic_token, sort_order='oldest') }}" 
                class="sort-btn {{ 'active' if sort_order == 'oldest' else '' }}">🕰️ Oldest First</a>
         </div>
     </div>
@@ -341,7 +341,7 @@
         
         {% if has_more %}
             <div class="load-more">
-                <a href="{{ url_for('photo_stream', magic_token=user.magic_token, sort_order=sort_order, offset=offset+50) }}" 
+                <a href="{{ url_for('main.photo_stream', magic_token=user.magic_token, sort_order=sort_order, offset=offset+50) }}" 
                    class="load-more-btn">
                     📸 Load More Photos
                 </a>

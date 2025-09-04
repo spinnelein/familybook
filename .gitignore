@@ -22,3 +22,4 @@ claude_settings.local.json
 static/uploads/
 *.backup
 .claude/settings.local.json
+danger.cmd

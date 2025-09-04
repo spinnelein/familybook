@@ -239,14 +239,14 @@
                 
                 {% if post['image_filename'] %}
                     <div class="media-container">
-                        <img src="{{ url_for('uploaded_file', filename=post['image_filename']) }}" alt="{{ post['title'] }}">
+                        <img src="{{ url_for('main.uploaded_file', filename=post['image_filename']) }}" alt="{{ post['title'] }}">
                     </div>
                 {% endif %}
                 
                 {% if post['video_filename'] %}
                     <div class="media-container">
                         <video controls>
-                            <source src="{{ url_for('uploaded_file', filename=post['video_filename']) }}" type="video/mp4">
+                            <source src="{{ url_for('main.uploaded_file', filename=post['video_filename']) }}" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
                     </div>

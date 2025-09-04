@@ -270,20 +270,20 @@
         <div class="magic-link-section">
             <h3>= Your Personal Familybook Link</h3>
             <p style="margin: 0 0 10px 0; color: #64748b;">Bookmark this link to always access family posts:</p>
-            <div class="magic-link">{{ url_for('posts', magic_token=user['magic_token'], _external=True) }}</div>
+            <div class="magic-link">{{ url_for('main.posts', magic_token=user['magic_token'], _external=True) }}</div>
             <div class="magic-link-buttons">
-                <a href="{{ url_for('posts', magic_token=user['magic_token']) }}" class="btn btn-primary">
+                <a href="{{ url_for('main.posts', magic_token=user['magic_token']) }}" class="btn btn-primary">
                     👁️ View Posts
                 </a>
                 {% if user['is_admin'] %}
-                    <a href="{{ url_for('create_post', magic_token=user['magic_token']) }}" class="btn btn-outline">
+                    <a href="{{ url_for('main.create_post', magic_token=user['magic_token']) }}" class="btn btn-outline">
                          Create Post
                     </a>
                 {% endif %}
             </div>
         </div>
         
-        <form method="POST" action="{{ url_for('update_user_settings', magic_token=user['magic_token']) }}">
+        <form method="POST" action="{{ url_for('main.update_user_settings', magic_token=user['magic_token']) }}">
             <div class="preferences-section">
                 <h2 class="section-title">= Email Notifications</h2>
                 <p style="color: #64748b; margin-bottom: 25px;">Choose which email notifications you'd like to receive. All emails will include your personal magic link to easily access the familybook.</p>
@@ -327,7 +327,7 @@
                 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">=� Save Preferences</button>
-                    <a href="{{ url_for('posts', magic_token=user['magic_token']) }}" class="btn btn-secondary">� Back to Posts</a>
+                    <a href="{{ url_for('main.posts', magic_token=user['magic_token']) }}" class="btn btn-secondary">� Back to Posts</a>
                 </div>
             </div>
         </form>

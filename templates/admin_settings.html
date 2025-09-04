@@ -218,10 +218,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 style="margin: 0;">⚙️ Email Settings</h1>
             <div>
-                <a href="{{ url_for('admin_console') }}" style="background: #6b7280; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; margin-right: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='#4b5563'" onmouseout="this.style.background='#6b7280'">
+                <a href="{{ url_for('admin.admin_console') }}" style="background: #6b7280; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; margin-right: 10px; transition: all 0.2s ease;" onmouseover="this.style.background='#4b5563'" onmouseout="this.style.background='#6b7280'">
                     ← Back
                 </a>
-                <a href="{{ url_for('admin_logout') }}" style="background: #ef4444; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                <a href="{{ url_for('admin.admin_logout') }}" style="background: #ef4444; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
                     🚪 Logout
                 </a>
             </div>
@@ -398,8 +398,8 @@
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">💾 Save Settings</button>
                 <button type="button" class="btn btn-test" onclick="testEmailSettings()">📧 Test Email</button>
-                <a href="{{ url_for('admin_console') }}" class="btn btn-secondary">← Back to Admin Console</a>
-                <a href="{{ url_for('admin_email_templates') }}" class="btn btn-primary">📧 Email Templates</a>
+                <a href="{{ url_for('admin.admin_console') }}" class="btn btn-secondary">← Back to Admin Console</a>
+                <a href="{{ url_for('admin.admin_email_templates') }}" class="btn btn-primary">📧 Email Templates</a>
             </div>
         </form>
     </div>
@@ -411,7 +411,7 @@
             }
             
             try {
-                const response = await fetch('{{ url_for('test_email') }}', {
+                const response = await fetch('{{ url_for('admin.test_email') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

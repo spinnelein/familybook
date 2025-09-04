@@ -204,7 +204,7 @@
         </div>
         
         {% if oauth_configured %}
-            <a href="{{ url_for('oauth_login') }}" class="oauth-button" id="oauth-btn">
+            <a href="{{ url_for('admin.oauth_login') }}" class="oauth-button" id="oauth-btn">
                 <span class="google-icon"></span>
                 Continue with Google
             </a>
@@ -215,7 +215,7 @@
             </div>
             
             <div style="margin-top: 20px; text-align: center;">
-                <a href="{{ url_for('admin_setup') }}" class="btn btn-primary">
+                <a href="{{ url_for('admin.admin_setup') }}" class="btn btn-primary">
                     ⚙️ Configure OAuth Settings
                 </a>
             </div>

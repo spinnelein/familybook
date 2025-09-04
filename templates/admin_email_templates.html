@@ -257,8 +257,8 @@
         <div class="header">
             <h1>📧 Email Templates</h1>
             <div class="nav-links">
-                <a href="{{ url_for('admin_console') }}">👥 Users</a>
-                <a href="{{ url_for('admin_settings') }}">⚙️ Settings</a>
+                <a href="{{ url_for('admin.admin_console') }}">👥 Users</a>
+                <a href="{{ url_for('admin.admin_settings') }}">⚙️ Settings</a>
             </div>
         </div>
         
@@ -306,7 +306,7 @@
                     </div>
                     
                     <div class="template-actions">
-                        <a href="{{ url_for('edit_email_template', template_id=template['id']) }}" class="btn btn-primary">
+                        <a href="{{ url_for('admin.edit_email_template', template_id=template['id']) }}" class="btn btn-primary">
                             ✏️ Edit Template
                         </a>
                         <button onclick="testTemplate({{ template['id'] }}, '{{ template['display_name'] }}')" class="btn btn-secondary">
@@ -333,7 +333,7 @@
             const loadingDiv = document.getElementById('loading-' + templateId);
             loadingDiv.style.display = 'block';
             
-            fetch('{{ url_for("test_email_template", template_id=0) }}'.replace('0', templateId), {
+            fetch('{{ url_for("admin.test_email_template", template_id=0) }}'.replace('0', templateId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -357,7 +357,7 @@
         
         function createDefaultTemplates() {
             if (confirm('This will create default email templates. Continue?')) {
-                fetch('{{ url_for("create_default_email_templates") }}', {
+                fetch('{{ url_for("admin.create_default_email_templates") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
