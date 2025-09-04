@@ -567,10 +567,24 @@ def update_user_settings(magic_token):
         if not user:
             abort(403)
         
-        # Get form data
-        new_post = 1 if request.form.get('new_post') else 0
-        major_event = 1 if request.form.get('major_event') else 0
+        # Get form data - handle both radio button and legacy checkbox formats
+        notification_level = request.form.get('notification_level')
         comment_reply = 1 if request.form.get('comment_reply') else 0
+        
+        # Convert radio button choice to individual preferences
+        if notification_level == 'all':
+            new_post = 1
+            major_event = 1
+        elif notification_level == 'major_only':
+            new_post = 0
+            major_event = 1
+        elif notification_level == 'none':
+            new_post = 0
+            major_event = 0
+        else:
+            # Legacy fallback for old checkbox format
+            new_post = 1 if request.form.get('new_post') else 0
+            major_event = 1 if request.form.get('major_event') else 0
         
         # Update preferences
         db.execute('''UPDATE user_notification_preferences 

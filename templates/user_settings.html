@@ -109,6 +109,55 @@
             margin-top: 2px;
         }
         
+        /* Radio button styles */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .radio-option {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .radio-option:hover {
+            border-color: #3b82f6;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        }
+        
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+        
+        .radio-option input[type="radio"]:checked + .radio-label {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+        
+        .radio-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 20px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .radio-icon {
+            font-size: 1.5rem;
+            margin-top: 2px;
+        }
+        
+        .radio-content {
+            flex: 1;
+        }
+        
         .magic-link-section {
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
             border: 1px solid #3b82f6;
@@ -288,27 +337,42 @@
                 <h2 class="section-title">= Email Notifications</h2>
                 <p style="color: #64748b; margin-bottom: 25px;">Choose which email notifications you'd like to receive. All emails will include your personal magic link to easily access the familybook.</p>
                 
-                <div class="preference-item">
-                    <div class="preference-icon">=�</div>
-                    <div class="preference-content">
-                        <h3 class="preference-title">New Posts</h3>
-                        <p class="preference-description">Get notified when someone shares a new post, photo, or story with the family.</p>
+                <!-- Post notification preferences as radio buttons -->
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" name="notification_level" id="all" value="all" 
+                               {% if prefs['new_post'] and prefs['major_event'] %}checked{% endif %}>
+                        <label for="all" class="radio-label">
+                            <div class="radio-icon">📬</div>
+                            <div class="radio-content">
+                                <h3 class="preference-title">All Posts</h3>
+                                <p class="preference-description">Get notified about all new posts, photos, and major family events</p>
+                            </div>
+                        </label>
                     </div>
-                    <div class="preference-checkbox">
-                        <input type="checkbox" name="new_post" id="new_post" 
-                               {% if prefs['new_post'] %}checked{% endif %}>
+                    
+                    <div class="radio-option">
+                        <input type="radio" name="notification_level" id="major_only" value="major_only"
+                               {% if not prefs['new_post'] and prefs['major_event'] %}checked{% endif %}>
+                        <label for="major_only" class="radio-label">
+                            <div class="radio-icon">⭐</div>
+                            <div class="radio-content">
+                                <h3 class="preference-title">Major Events Only</h3>
+                                <p class="preference-description">Only receive notifications for important family announcements and events</p>
+                            </div>
+                        </label>
                     </div>
-                </div>
-                
-                <div class="preference-item">
-                    <div class="preference-icon">=�</div>
-                    <div class="preference-content">
-                        <h3 class="preference-title">Major Events</h3>
-                        <p class="preference-description">Receive notifications for important family events, announcements, and major updates that everyone should see.</p>
-                    </div>
-                    <div class="preference-checkbox">
-                        <input type="checkbox" name="major_event" id="major_event" 
-                               {% if prefs['major_event'] %}checked{% endif %}>
+                    
+                    <div class="radio-option">
+                        <input type="radio" name="notification_level" id="none" value="none"
+                               {% if not prefs['new_post'] and not prefs['major_event'] %}checked{% endif %}>
+                        <label for="none" class="radio-label">
+                            <div class="radio-icon">🔕</div>
+                            <div class="radio-content">
+                                <h3 class="preference-title">No Notifications</h3>
+                                <p class="preference-description">Don't send me any post notifications (you can still visit the site)</p>
+                            </div>
+                        </label>
                     </div>
                 </div>
                 
