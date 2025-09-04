@@ -118,7 +118,7 @@ def send_notification_email(template_name, user_id, **context):
         
         # Add user context
         context['user_name'] = user['name']
-        context['magic_link'] = url_for('posts', magic_token=user['magic_token'], _external=True)
+        context['magic_link'] = url_for('main.posts', magic_token=user['magic_token'], _external=True)
         
         return send_templated_email(template_name, user['email'], user_id, **context)
     
